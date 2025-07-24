@@ -45,6 +45,25 @@
             background-color: #3b82f6;
             color: white;
         }
+        .driver-option-btn {
+            padding: 6px 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 6px;
+            background-color: white;
+            color: #374151;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 13px;
+        }
+        .driver-option-btn:hover {
+            border-color: #f59e0b;
+            background-color: #fffbeb;
+        }
+        .driver-option-btn.active {
+            border-color: #f59e0b;
+            background-color: #f59e0b;
+            color: white;
+        }
         .modal {
             display: none;
             position: fixed;
@@ -116,18 +135,33 @@
             
             <div class="space-y-4">
                 <input type="text" placeholder="פעילות" class="w-full p-3 border rounded-lg" id="edit-event-activity">
-                <select class="w-full p-3 border rounded-lg" id="edit-event-member">
-                    <option value="">בחר בן משפחה</option>
-                </select>
                 <input type="date" class="w-full p-3 border rounded-lg" id="edit-event-date">
-                <input type="time" class="w-full p-3 border rounded-lg" id="edit-event-time">
                 
                 <div>
-                    <h4 class="text-sm font-medium text-gray-700 mb-2">סוג הסעה (אופציונלי)</h4>
-                    <div id="edit-transport-options" class="flex items-center gap-3">
+                    <h4 class="text-sm font-medium text-gray-700 mb-2">משתתפים (בחירה מרובה)</h4>
+                    <div id="edit-member-options" class="flex items-center gap-2 flex-wrap">
+                        <button type="button" class="transport-option-btn" data-value="טליה" onclick="toggleMember(this, 'edit')">טליה</button>
+                        <button type="button" class="transport-option-btn" data-value="שביט" onclick="toggleMember(this, 'edit')">שביט</button>
+                        <button type="button" class="transport-option-btn" data-value="שגיא" onclick="toggleMember(this, 'edit')">שגיא</button>
+                        <button type="button" class="transport-option-btn" data-value="אביתר" onclick="toggleMember(this, 'edit')">אביתר</button>
+                        <button type="button" class="transport-option-btn" data-value="לביא" onclick="toggleMember(this, 'edit')">לביא</button>
+                    </div>
+                </div>
+                
+                <div>
+                    <h4 class="text-sm font-medium text-gray-700 mb-2">סוג הסעה (בחירה מרובה)</h4>
+                    <div id="edit-transport-options" class="flex items-center gap-3 mb-3">
                         <button type="button" class="transport-option-btn" data-value="הלוך" onclick="toggleTransport(this, 'edit')">הלוך</button>
                         <button type="button" class="transport-option-btn" data-value="חזור" onclick="toggleTransport(this, 'edit')">חזור</button>
                         <button type="button" class="transport-option-btn" data-value="לרכבת" onclick="toggleTransport(this, 'edit')">לרכבת</button>
+                    </div>
+                    
+                    <div id="edit-driver-selection" style="display: none;">
+                        <h4 class="text-sm font-medium text-gray-700 mb-2">מסיע (אופציונלי)</h4>
+                        <div id="edit-driver-options" class="flex items-center gap-2">
+                            <button type="button" class="driver-option-btn" data-value="שביט" onclick="toggleDriver(this, 'edit')">שביט</button>
+                            <button type="button" class="driver-option-btn" data-value="טליה" onclick="toggleDriver(this, 'edit')">טליה</button>
+                        </div>
                     </div>
                 </div>
 
@@ -193,9 +227,9 @@
             if (loadingDiv) {
                 loadingDiv.innerHTML = `
                     <div class="text-center">
-                        <div class="text-red-500 text-xl mb-4">⚠️ Error connecting to the database</div>
-                        <p class="text-gray-600">Could not connect to the Firebase database.</p>
-                        <button onclick="location.reload()" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded">Try Again</button>
+                        <div class="text-red-500 text-xl mb-4">⚠️ שגיאה בחיבור לבסיס הנתונים</div>
+                        <p class="text-gray-600">לא ניתן להתחבר לבסיס הנתונים של Firebase</p>
+                        <button onclick="location.reload()" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded">נסה שוב</button>
                     </div>
                 `;
             }
@@ -207,17 +241,42 @@
         let calendar = [];
         let shoppingList = [];
         let customTasks = [];
+        let weeklyTasks = {};
         let isInitialLoad = true;
         let editingEventId = null;
+        let currentCalendarMonth = new Date().getMonth();
+        let currentCalendarYear = new Date().getFullYear();
 
         const familyMembers = ['טליה', 'שביט', 'שגיא', 'אביתר', 'לביא'];
+        const drivers = ['שביט', 'טליה'];
         const daysOfWeekHebrew = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
         
+        // Task arrangements
         const taskArrangements = [
             { 'שגיא': 'פח', 'אביתר': 'מדיח', 'לביא': 'מחזור' },
             { 'שגיא': 'מדיח', 'אביתר': 'מחזור', 'לביא': 'פח' },
             { 'שגיא': 'מחזור', 'אביתר': 'פח', 'לביא': 'מדיח' }
         ];
+
+        // Dog walking schedule
+        const dogWalkingSchedule = {
+            'ראשון': 'לביא',
+            'שני': 'אביתר',
+            'שלישי': 'שגיא',
+            'רביעי': 'אביתר',
+            'חמישי': 'שגיא',
+            'שישי': 'לביא ואביתר',
+            'שבת': 'שגיא'
+        };
+
+        // Member colors
+        const memberColors = {
+            'שגיא': 'bg-red-100 border-red-300 text-red-800',
+            'אביתר': 'bg-blue-100 border-blue-300 text-blue-800',
+            'לביא': 'bg-green-100 border-green-300 text-green-800',
+            'טליה': 'bg-purple-100 border-purple-300 text-purple-800',
+            'שביט': 'bg-orange-100 border-orange-300 text-orange-800'
+        };
 
         // Helper Functions
         function formatDate(date) {
@@ -234,13 +293,81 @@
             return weekStart;
         }
 
+        function getWeekKey(weekOffset = 0) {
+            const weekStart = getWeekStartDate(weekOffset);
+            return `week_${weekStart.getFullYear()}_${weekStart.getMonth() + 1}_${weekStart.getDate()}`;
+        }
+
+        function initializeWeeklyTasks() {
+            const daysOfWeek = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+            let hasChanges = false;
+            
+            for (let weekOffset = 0; weekOffset < 2; weekOffset++) {
+                const weekKey = getWeekKey(weekOffset);
+                
+                if (!weeklyTasks[weekKey]) {
+                    weeklyTasks[weekKey] = {};
+                    hasChanges = true;
+                    
+                    daysOfWeek.forEach(day => {
+                        weeklyTasks[weekKey][day] = {};
+                        
+                        // Add dog walking
+                        weeklyTasks[weekKey][day]['טיול עם במבה'] = {
+                            assignedTo: dogWalkingSchedule[day],
+                            completed: false
+                        };
+                        
+                        // Add chores based on current arrangement
+                        const arrangement = taskArrangements[currentArrangement];
+                        Object.entries(arrangement).forEach(([child, task]) => {
+                            weeklyTasks[weekKey][day][task] = { 
+                                assignedTo: child, 
+                                completed: false 
+                            };
+                        });
+                    });
+                }
+            }
+            
+            if (hasChanges) {
+                saveData('weeklyTasks', weeklyTasks);
+            }
+        }
+
         // Transport and Recurring functions
         function toggleTransport(selectedBtn, context = 'new') {
-            const containerId = context === 'edit' ? 'edit-transport-options' : 'transport-options';
+            const isAlreadyActive = selectedBtn.classList.contains('active');
+
+            if (isAlreadyActive) {
+                selectedBtn.classList.remove('active');
+            } else {
+                selectedBtn.classList.add('active');
+            }
+            
+            // Show/hide driver selection based on transport selection
+            const containerId = context === 'edit' ? 'edit-driver-selection' : 'driver-selection';
+            const transportContainerId = context === 'edit' ? 'edit-transport-options' : 'transport-options';
+            const hasTransport = document.querySelectorAll(`#${transportContainerId} .active`).length > 0;
+            document.getElementById(containerId).style.display = hasTransport ? 'block' : 'none';
+        }
+
+        function toggleMember(selectedBtn, context = 'new') {
+            const isAlreadyActive = selectedBtn.classList.contains('active');
+
+            if (isAlreadyActive) {
+                selectedBtn.classList.remove('active');
+            } else {
+                selectedBtn.classList.add('active');
+            }
+        }
+
+        function toggleDriver(selectedBtn, context = 'new') {
+            const containerId = context === 'edit' ? 'edit-driver-options' : 'driver-options';
             const optionsContainer = document.getElementById(containerId);
             const isAlreadyActive = selectedBtn.classList.contains('active');
 
-            optionsContainer.querySelectorAll('.transport-option-btn').forEach(btn => {
+            optionsContainer.querySelectorAll('.driver-option-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
 
@@ -264,17 +391,17 @@
         function generateRecurringEvents(baseEvent, recurringType, endDate = null) {
             const events = [];
             const baseDate = new Date(baseEvent.date);
-            const maxEvents = 52; // Maximum 52 occurrences
+            const maxEvents = 52;
             let currentDate = new Date(baseDate);
             let count = 0;
 
             if (!endDate) {
                 endDate = new Date();
-                endDate.setFullYear(endDate.getFullYear() + 1); // Default to 1 year
+                endDate.setFullYear(endDate.getFullYear() + 1);
             }
 
             while (currentDate <= endDate && count < maxEvents) {
-                if (count > 0) { // Skip the first one as it's the original event
+                if (count > 0) {
                     const newEvent = {
                         ...baseEvent,
                         id: Date.now() + count,
@@ -285,7 +412,6 @@
                     events.push(newEvent);
                 }
 
-                // Calculate next occurrence
                 switch (recurringType) {
                     case 'daily':
                         currentDate.setDate(currentDate.getDate() + 1);
@@ -311,12 +437,16 @@
                 calendar = [];
                 shoppingList = [];
                 customTasks = [];
+                weeklyTasks = {};
             } else {
                 calendar = data.calendar || [];
                 shoppingList = data.shopping || [];
                 customTasks = data.customTasks || [];
+                weeklyTasks = data.weeklyTasks || {};
                 currentArrangement = data.arrangement || 0;
             }
+
+            initializeWeeklyTasks();
 
             if (isInitialLoad) {
                 renderApp();
@@ -338,52 +468,70 @@
         }
 
         // Calendar Functions
-        async function addCalendarEvent(activity, member, date, time, transport = null, recurring = 'none') {
-            const newEvent = {
-                id: Date.now(),
-                activity: activity,
-                member: member,
-                date: date,
-                time: time,
-                transport: transport,
-                recurring: recurring,
-                isRecurring: false
-            };
-
-            calendar.push(newEvent);
-
-            // Generate recurring events if needed
-            if (recurring && recurring !== 'none') {
-                const recurringEvents = generateRecurringEvents(newEvent, recurring);
-                calendar.push(...recurringEvents);
+        async function addCalendarEvent(activity, members, date, transports = [], driver = null, recurring = 'none') {
+            if (transports.length === 0) {
+                // No transport - single event
+                const newEvent = {
+                    id: Date.now(),
+                    activity: activity,
+                    members: members,
+                    date: date,
+                    transport: null,
+                    driver: null,
+                    recurring: recurring,
+                    isRecurring: false
+                };
+                calendar.push(newEvent);
+                
+                if (recurring && recurring !== 'none') {
+                    const recurringEvents = generateRecurringEvents(newEvent, recurring);
+                    calendar.push(...recurringEvents);
+                }
+            } else {
+                // Multiple transport events
+                transports.forEach((transport, index) => {
+                    const newEvent = {
+                        id: Date.now() + index,
+                        activity: `${activity} - ${transport}`,
+                        members: members,
+                        date: date,
+                        transport: transport,
+                        driver: driver || 'לא הוגדר',
+                        recurring: recurring,
+                        isRecurring: false
+                    };
+                    calendar.push(newEvent);
+                    
+                    if (recurring && recurring !== 'none') {
+                        const recurringEvents = generateRecurringEvents(newEvent, recurring);
+                        calendar.push(...recurringEvents);
+                    }
+                });
             }
 
             await saveData('calendar', calendar);
         }
 
-        async function updateCalendarEvent(eventId, activity, member, date, time, transport = null, recurring = 'none') {
+        async function updateCalendarEvent(eventId, activity, members, date, transports = [], driver = null, recurring = 'none') {
             const eventIndex = calendar.findIndex(event => event.id === eventId);
             if (eventIndex === -1) return;
 
             const oldEvent = calendar[eventIndex];
             
-            // Remove old recurring events if they exist
             if (oldEvent.recurring && oldEvent.recurring !== 'none') {
                 calendar = calendar.filter(event => event.originalEventId !== eventId);
             }
 
-            // Update the main event
             calendar[eventIndex] = {
                 ...oldEvent,
                 activity: activity,
-                member: member,
+                members: members,
                 date: date,
-                time: time,
-                transport: transport,
+                transport: transports.length > 0 ? transports[0] : null,
+                driver: driver || 'לא הוגדר',
                 recurring: recurring
             };
 
-            // Generate new recurring events if needed
             if (recurring && recurring !== 'none') {
                 const recurringEvents = generateRecurringEvents(calendar[eventIndex], recurring);
                 calendar.push(...recurringEvents);
@@ -393,7 +541,6 @@
         }
 
         async function removeCalendarEvent(id) {
-            // Remove the main event and any recurring events
             calendar = calendar.filter(event => event.id !== id && event.originalEventId !== id);
             await saveData('calendar', calendar);
         }
@@ -405,24 +552,30 @@
 
             editingEventId = eventId;
             
-            // Populate the edit form
             document.getElementById('edit-event-activity').value = event.activity;
-            document.getElementById('edit-event-member').value = event.member;
             document.getElementById('edit-event-date').value = event.date;
-            document.getElementById('edit-event-time').value = event.time;
 
-            // Populate family members dropdown
-            const memberSelect = document.getElementById('edit-event-member');
-            memberSelect.innerHTML = '<option value="">בחר בן משפחה</option>' +
-                familyMembers.map(member => `<option value="${member}" ${member === event.member ? 'selected' : ''}>${member}</option>`).join('');
+            // Set members
+            if (event.members && Array.isArray(event.members)) {
+                event.members.forEach(member => {
+                    const memberBtn = document.querySelector(`#edit-member-options [data-value="${member}"]`);
+                    if (memberBtn) memberBtn.classList.add('active');
+                });
+            }
 
-            // Set transport option
+            // Set transport
             if (event.transport) {
                 const transportBtn = document.querySelector(`#edit-transport-options [data-value="${event.transport}"]`);
                 if (transportBtn) transportBtn.classList.add('active');
             }
 
-            // Set recurring option
+            // Set driver
+            if (event.driver && event.driver !== 'לא הוגדר') {
+                const driverBtn = document.querySelector(`#edit-driver-options [data-value="${event.driver}"]`);
+                if (driverBtn) driverBtn.classList.add('active');
+            }
+
+            // Set recurring
             const recurringValue = event.recurring || 'none';
             const recurringBtn = document.querySelector(`#edit-recurring-options [data-value="${recurringValue}"]`);
             if (recurringBtn) recurringBtn.classList.add('active');
@@ -434,14 +587,10 @@
             editingEventId = null;
             document.getElementById('edit-event-modal').classList.remove('show');
             
-            // Clear form
             document.getElementById('edit-event-activity').value = '';
-            document.getElementById('edit-event-member').value = '';
             document.getElementById('edit-event-date').value = '';
-            document.getElementById('edit-event-time').value = '';
 
-            // Clear active buttons
-            document.querySelectorAll('#edit-transport-options .active, #edit-recurring-options .active').forEach(btn => {
+            document.querySelectorAll('#edit-member-options .active, #edit-transport-options .active, #edit-driver-options .active, #edit-recurring-options .active').forEach(btn => {
                 btn.classList.remove('active');
             });
         }
@@ -450,23 +599,38 @@
             if (!editingEventId) return;
 
             const activity = document.getElementById('edit-event-activity').value;
-            const member = document.getElementById('edit-event-member').value;
             const date = document.getElementById('edit-event-date').value;
-            const time = document.getElementById('edit-event-time').value;
 
-            const activeTransportBtn = document.querySelector('#edit-transport-options .active');
-            const transportValue = activeTransportBtn ? activeTransportBtn.dataset.value : null;
+            const selectedMembers = Array.from(document.querySelectorAll('#edit-member-options .active')).map(btn => btn.dataset.value);
+            const selectedTransports = Array.from(document.querySelectorAll('#edit-transport-options .active')).map(btn => btn.dataset.value);
+            const selectedDriver = document.querySelector('#edit-driver-options .active')?.dataset.value || null;
+            const selectedRecurring = document.querySelector('#edit-recurring-options .active')?.dataset.value || 'none';
 
-            const activeRecurringBtn = document.querySelector('#edit-recurring-options .active');
-            const recurringValue = activeRecurringBtn ? activeRecurringBtn.dataset.value : 'none';
-
-            if (activity && member && date && time) {
-                await updateCalendarEvent(editingEventId, activity, member, date, time, transportValue, recurringValue);
+            if (activity && selectedMembers.length > 0 && date) {
+                await updateCalendarEvent(editingEventId, activity, selectedMembers, date, selectedTransports, selectedDriver, selectedRecurring);
                 closeEditModal();
             }
         }
 
-        // Other data functions (Shopping, Custom Tasks, etc.)
+        // Weekly tasks functions
+        async function toggleWeeklyTask(weekKey, day, task) {
+            if (weeklyTasks[weekKey] && weeklyTasks[weekKey][day] && weeklyTasks[weekKey][day][task]) {
+                weeklyTasks[weekKey][day][task].completed = !weeklyTasks[weekKey][day][task].completed;
+                await saveData('weeklyTasks', weeklyTasks);
+                renderCurrentView();
+            }
+        }
+
+        async function changeArrangement() {
+            currentArrangement = (currentArrangement + 1) % 3;
+            await saveData('arrangement', currentArrangement);
+            
+            weeklyTasks = {};
+            initializeWeeklyTasks();
+            renderCurrentView();
+        }
+
+        // Other data functions
         async function addShoppingItem(item, addedBy) {
             const newItem = {
                 id: Date.now(),
@@ -518,11 +682,6 @@
             await saveData('customTasks', customTasks);
         }
 
-        async function changeArrangement() {
-            currentArrangement = (currentArrangement + 1) % 3;
-            await saveData('arrangement', currentArrangement);
-        }
-
         // UI Functions
         function setCurrentView(view) {
             currentView = view;
@@ -555,56 +714,53 @@
 
         function renderHomeView() {
             const pendingShoppingItems = shoppingList.filter(item => !item.completed).length;
+            const currentWeekKey = getWeekKey(0);
+            const nextWeekKey = getWeekKey(1);
+            const currentArrangementData = taskArrangements[currentArrangement];
             
-            const getWeekEventsHTML = (weekOffset) => {
+            const getWeekTasksHTML = (weekOffset) => {
+                const weekKey = getWeekKey(weekOffset);
                 const weekStart = getWeekStartDate(weekOffset);
-                const weekEnd = new Date(weekStart.getTime() + 6 * 24 * 60 * 60 * 1000);
-                weekEnd.setHours(23, 59, 59, 999);
-
-                const weekEvents = calendar.filter(event => {
-                    const eventDate = new Date(event.date);
-                    return eventDate >= weekStart && eventDate <= weekEnd;
-                });
-
-                if (weekEvents.length === 0) {
-                    return `<div class="text-center text-gray-500 py-4">אין אירועים מתוכננים</div>`;
-                }
-
-                const eventsByDate = weekEvents.reduce((acc, event) => {
-                    const dateKey = event.date;
-                    if (!acc[dateKey]) {
-                        acc[dateKey] = [];
-                    }
-                    acc[dateKey].push(event);
-                    return acc;
-                }, {});
-
-                const sortedDates = Object.keys(eventsByDate).sort();
-
-                return sortedDates.map(date => {
-                    const dayEvents = eventsByDate[date].sort((a,b) => a.time.localeCompare(b.time));
-                    const dayDate = new Date(date);
-                    const dayName = daysOfWeekHebrew[dayDate.getDay()];
-                    
-                    return `
-                        <div class="day-card mb-4">
-                            <h4 class="font-bold text-lg text-indigo-700 mb-2">${dayName}, ${formatDate(dayDate)}</h4>
-                            <div class="space-y-3">
-                            ${dayEvents.map(event => `
-                                <div class="p-3 bg-indigo-50 rounded-lg">
-                                    <div class="font-medium text-gray-800">${event.activity}</div>
-                                    <div class="text-sm text-gray-600">
-                                        <i data-lucide="user" class="inline-block w-3 h-3"></i> ${event.member}
-                                        <i data-lucide="clock" class="inline-block w-3 h-3 mr-2"></i> ${event.time}
-                                        ${event.transport ? `<span class="text-orange-600 font-bold ml-2"><i data-lucide="car" class="inline-block w-3 h-3 ml-1"></i>הסעה: ${event.transport}</span>` : ''}
-                                        ${event.recurring && event.recurring !== 'none' ? `<span class="text-green-600 font-bold ml-2"><i data-lucide="repeat" class="inline-block w-3 h-3 ml-1"></i>חוזר</span>` : ''}
+                const weekTasks = weeklyTasks[weekKey] || {};
+                
+                return `
+                    <div class="grid grid-cols-1 md:grid-cols-7 gap-3">
+                        ${daysOfWeekHebrew.map(day => {
+                            const dayTasks = weekTasks[day] || {};
+                            const dayDate = new Date(weekStart);
+                            const dayIndex = daysOfWeekHebrew.indexOf(day);
+                            dayDate.setDate(weekStart.getDate() + dayIndex);
+                            const isToday = dayDate.toDateString() === new Date().toDateString();
+                            
+                            return `
+                                <div class="bg-white p-4 rounded-lg shadow ${isToday ? 'border-2 border-blue-400' : 'border border-gray-200'}">
+                                    <div class="text-center mb-3">
+                                        <h4 class="font-bold text-gray-800">${day}</h4>
+                                        <p class="text-xs text-gray-500">${formatDate(dayDate)}</p>
+                                        ${isToday ? '<p class="text-xs text-blue-600 font-bold">היום</p>' : ''}
+                                    </div>
+                                    
+                                    <div class="space-y-2">
+                                        ${Object.entries(dayTasks).map(([task, taskInfo]) => `
+                                            <div class="p-2 rounded text-xs ${taskInfo.completed ? 'bg-green-50 border border-green-200' : 'bg-gray-50 border border-gray-200'}">
+                                                <div class="flex items-center justify-between">
+                                                    <button onclick="toggleWeeklyTask('${weekKey}', '${day}', '${task.replace(/'/g, "\\'")}')">
+                                                        <i data-lucide="${taskInfo.completed ? 'check-circle' : 'circle'}" 
+                                                           class="w-3 h-3 ${taskInfo.completed ? 'text-green-600' : 'text-gray-400 hover:text-green-500'}"></i>
+                                                    </button>
+                                                    <div class="flex-1 mr-2">
+                                                        <div class="${taskInfo.completed ? 'line-through text-gray-500' : 'text-gray-800'}">${task}</div>
+                                                        <div class="text-xs ${memberColors[taskInfo.assignedTo.split(' ')[0]] || 'text-blue-600'} rounded px-1">${taskInfo.assignedTo}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        `).join('')}
                                     </div>
                                 </div>
-                            `).join('')}
-                            </div>
-                        </div>
-                    `;
-                }).join('');
+                            `;
+                        }).join('')}
+                    </div>
+                `;
             };
 
             return `
@@ -612,7 +768,12 @@
                     <div class="bg-blue-50 p-4 rounded-lg flex justify-between items-center">
                         <div>
                             <h2 class="text-xl font-bold text-blue-800">סידור משימות #${currentArrangement + 1}</h2>
-                            <p class="text-sm text-blue-700 mt-1">ניהול משימות שבועיות (פח, מדיח, מחזור) מתבצע בטאב "משימות".</p>
+                            <div class="text-sm text-blue-700 mt-1">
+                                ${Object.entries(currentArrangementData).map(([child, task]) => 
+                                    `<span class="inline-block ml-4 px-2 py-1 rounded ${memberColors[child]}">${child}: ${task}</span>`
+                                ).join('')}
+                            </div>
+                            <p class="text-xs text-blue-600 mt-2">ניהול מפורט בטאב "משימות"</p>
                         </div>
                         <button onclick="changeArrangement()" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
                             סידור הבא
@@ -631,23 +792,84 @@
                     ` : ''}
 
                     <div class="week-header">
-                        <h3 class="text-xl font-bold">לוז לשבוע הנוכחי</h3>
+                        <h3 class="text-xl font-bold">השבוע הנוכחי</h3>
+                        <p class="text-sm opacity-90">${formatDate(getWeekStartDate(0))} - ${formatDate(new Date(getWeekStartDate(0).getTime() + 6 * 24 * 60 * 60 * 1000))}</p>
                     </div>
-                    <div>
-                        ${getWeekEventsHTML(0)}
-                    </div>
+                    ${getWeekTasksHTML(0)}
 
                     <div class="week-header">
-                        <h3 class="text-xl font-bold">לוז לשבוע הבא</h3>
+                        <h3 class="text-xl font-bold">השבוע הבא</h3>
+                        <p class="text-sm opacity-90">${formatDate(getWeekStartDate(1))} - ${formatDate(new Date(getWeekStartDate(1).getTime() + 6 * 24 * 60 * 60 * 1000))}</p>
                     </div>
-                    <div>
-                        ${getWeekEventsHTML(1)}
-                    </div>
+                    ${getWeekTasksHTML(1)}
                 </div>
             `;
         }
 
         function renderCalendarView() {
+            const monthNames = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
+            
+            const firstDay = new Date(currentCalendarYear, currentCalendarMonth, 1);
+            const lastDay = new Date(currentCalendarYear, currentCalendarMonth + 1, 0);
+            const daysInMonth = lastDay.getDate();
+            const startingDayOfWeek = firstDay.getDay();
+            
+            const monthEvents = calendar.filter(event => {
+                const eventDate = new Date(event.date);
+                return eventDate.getMonth() === currentCalendarMonth && eventDate.getFullYear() === currentCalendarYear;
+            });
+
+            const getEventsForDay = (day) => {
+                const dateStr = `${currentCalendarYear}-${String(currentCalendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                return monthEvents.filter(event => event.date === dateStr);
+            };
+
+            const generateCalendar = () => {
+                let calendar = [];
+                let week = [];
+                
+                for (let i = 0; i < startingDayOfWeek; i++) {
+                    week.push('<div class="h-24 bg-gray-50"></div>');
+                }
+                
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const dayEvents = getEventsForDay(day);
+                    const isToday = new Date().toDateString() === new Date(currentCalendarYear, currentCalendarMonth, day).toDateString();
+                    
+                    week.push(`
+                        <div class="h-24 border border-gray-200 p-1 ${isToday ? 'bg-blue-50 border-blue-300' : 'bg-white'}">
+                            <div class="text-sm font-medium ${isToday ? 'text-blue-700' : 'text-gray-700'}">${day}</div>
+                            <div class="mt-1 space-y-1 overflow-hidden">
+                                ${dayEvents.slice(0, 2).map(event => {
+                                    const firstMember = Array.isArray(event.members) && event.members.length > 0 ? event.members[0] : event.member || '';
+                                    const memberColor = memberColors[firstMember] || 'bg-gray-100 border-gray-300 text-gray-800';
+                                    return `
+                                        <div class="text-xs p-1 rounded ${memberColor} truncate cursor-pointer" onclick="openEditModal(${event.id})" title="${event.activity}">
+                                            ${event.activity.substring(0, 15)}${event.activity.length > 15 ? '...' : ''}
+                                        </div>
+                                    `;
+                                }).join('')}
+                                ${dayEvents.length > 2 ? `<div class="text-xs text-gray-500">+${dayEvents.length - 2} עוד</div>` : ''}
+                            </div>
+                        </div>
+                    `);
+                    
+                    if (week.length === 7) {
+                        calendar.push(`<div class="grid grid-cols-7 gap-1">${week.join('')}</div>`);
+                        week = [];
+                    }
+                }
+                
+                while (week.length < 7 && week.length > 0) {
+                    week.push('<div class="h-24 bg-gray-50"></div>');
+                }
+                if (week.length === 7) {
+                    calendar.push(`<div class="grid grid-cols-7 gap-1">${week.join('')}</div>`);
+                }
+                
+                return calendar.join('');
+            };
+
             return `
                 <div class="space-y-6">
                     <h2 class="text-2xl font-bold text-gray-800">לוח משפחתי</h2>
@@ -656,20 +878,33 @@
                         <h3 class="text-lg font-bold text-gray-800 mb-4">הוספת אירוע</h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             <input type="text" placeholder="פעילות" class="p-3 border rounded-lg" id="new-event-activity">
-                            <select class="p-3 border rounded-lg" id="new-event-member">
-                                <option value="">בחר בן משפחה</option>
-                                ${familyMembers.map(member => `<option value="${member}">${member}</option>`).join('')}
-                            </select>
                             <input type="date" class="p-3 border rounded-lg" id="new-event-date">
-                            <input type="time" class="p-3 border rounded-lg" id="new-event-time">
                         </div>
 
                         <div class="mb-4">
-                            <h4 class="text-sm font-medium text-gray-700 mb-2">סוג הסעה (אופציונלי)</h4>
-                            <div id="transport-options" class="flex items-center gap-3">
+                            <h4 class="text-sm font-medium text-gray-700 mb-2">משתתפים (בחירה מרובה)</h4>
+                            <div id="member-options" class="flex items-center gap-2 flex-wrap">
+                                ${familyMembers.map(member => `
+                                    <button type="button" class="transport-option-btn" data-value="${member}" onclick="toggleMember(this)">${member}</button>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <h4 class="text-sm font-medium text-gray-700 mb-2">סוג הסעה (בחירה מרובה)</h4>
+                            <div id="transport-options" class="flex items-center gap-3 mb-3">
                                 <button type="button" class="transport-option-btn" data-value="הלוך" onclick="toggleTransport(this)">הלוך</button>
                                 <button type="button" class="transport-option-btn" data-value="חזור" onclick="toggleTransport(this)">חזור</button>
                                 <button type="button" class="transport-option-btn" data-value="לרכבת" onclick="toggleTransport(this)">לרכבת</button>
+                            </div>
+                            
+                            <div id="driver-selection" style="display: none;">
+                                <h4 class="text-sm font-medium text-gray-700 mb-2">מסיע (אופציונלי)</h4>
+                                <div id="driver-options" class="flex items-center gap-2">
+                                    ${drivers.map(driver => `
+                                        <button type="button" class="driver-option-btn" data-value="${driver}" onclick="toggleDriver(this)">${driver}</button>
+                                    `).join('')}
+                                </div>
                             </div>
                         </div>
 
@@ -688,38 +923,40 @@
                         </button>
                     </div>
 
+                    <!-- Calendar Display -->
                     <div class="bg-white p-6 rounded-lg shadow-lg">
-                        <h3 class="text-lg font-bold text-gray-800 mb-4">כל האירועים</h3>
-                        <div class="space-y-3">
-                            ${calendar.length > 0 ? calendar
-                                .sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`))
-                                .map(event => `
-                                <div class="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                                    <div class="flex justify-between items-start">
-                                        <div class="flex-1">
-                                            <div class="font-medium">${event.activity}</div>
-                                            <div class="text-sm text-gray-600">
-                                                ${event.member} • ${new Date(event.date).toLocaleDateString('he-IL')} • ${event.time}
-                                                ${event.transport ? `<span class="text-orange-600 font-bold"> • הסעה: ${event.transport}</span>` : ''}
-                                                ${event.recurring && event.recurring !== 'none' ? `<span class="text-green-600 font-bold"> • חוזר ${event.recurring === 'daily' ? 'יומי' : event.recurring === 'weekly' ? 'שבועי' : 'חודשי'}</span>` : ''}
-                                                ${event.isRecurring ? '<span class="text-purple-600 font-bold"> • (חוזר)</span>' : ''}
-                                            </div>
-                                        </div>
-                                        <div class="flex gap-2 mr-4">
-                                            ${!event.isRecurring ? `<button onclick="openEditModal(${event.id})" class="text-blue-500 hover:text-blue-700" title="עריכת אירוע">
-                                                <i data-lucide="edit" class="w-4 h-4"></i>
-                                            </button>` : ''}
-                                            <button onclick="removeCalendarEvent(${event.id})" class="text-red-500 hover:text-red-700" title="מחיקת אירוע">
-                                                <i data-lucide="trash-2" class="w-4 h-4"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            `).join('') : '<div class="text-center text-gray-500 py-8">אין אירועים מתוכננים</div>'}
+                        <div class="flex justify-between items-center mb-6">
+                            <button onclick="changeCalendarMonth(-1)" class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">
+                                <i data-lucide="chevron-right" class="w-5 h-5"></i>
+                            </button>
+                            <h3 class="text-xl font-bold text-gray-800">${monthNames[currentCalendarMonth]} ${currentCalendarYear}</h3>
+                            <button onclick="changeCalendarMonth(1)" class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">
+                                <i data-lucide="chevron-left" class="w-5 h-5"></i>
+                            </button>
                         </div>
+                        
+                        <div class="grid grid-cols-7 gap-1 mb-2">
+                            ${['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'].map(day => 
+                                `<div class="text-center font-medium text-gray-600 py-2">${day}</div>`
+                            ).join('')}
+                        </div>
+                        
+                        ${generateCalendar()}
                     </div>
                 </div>
             `;
+        }
+
+        function changeCalendarMonth(direction) {
+            currentCalendarMonth += direction;
+            if (currentCalendarMonth > 11) {
+                currentCalendarMonth = 0;
+                currentCalendarYear++;
+            } else if (currentCalendarMonth < 0) {
+                currentCalendarMonth = 11;
+                currentCalendarYear--;
+            }
+            renderCurrentView();
         }
 
         function renderShoppingView() {
@@ -793,17 +1030,46 @@
         }
 
         function renderCustomTasksView() {
+            const currentArrangementData = taskArrangements[currentArrangement];
+            
             return `
                 <div class="space-y-6">
                     <h2 class="text-2xl font-bold text-gray-800">ניהול משימות</h2>
                     
-                     <div class="bg-white p-6 rounded-lg shadow-lg">
-                         <h3 class="text-lg font-bold text-gray-800 mb-4">משימות שבועיות קבועות</h3>
-                         <p class="text-sm text-gray-600">המשימות היומיות (פח, מדיח וכו') מתאפסות אוטומטית בכל מוצאי שבת. ניתן לשנות את הסידור מהכפתור בעמוד הבית.</p>
+                    <div class="bg-white p-6 rounded-lg shadow-lg">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4">סידור משימות שבועיות נוכחי #${currentArrangement + 1}</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <h4 class="font-medium text-gray-700 mb-3">משימות בית</h4>
+                                <div class="space-y-2">
+                                    ${Object.entries(currentArrangementData).map(([child, task]) => `
+                                        <div class="p-3 rounded-lg ${memberColors[child]}">
+                                            <span class="font-medium">${child}</span> - ${task}
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <h4 class="font-medium text-gray-700 mb-3">טיולים עם במבה</h4>
+                                <div class="space-y-2">
+                                    ${Object.entries(dogWalkingSchedule).map(([day, person]) => `
+                                        <div class="p-2 rounded-lg bg-gray-50 border border-gray-200 text-sm">
+                                            <span class="font-medium">${day}</span> - 
+                                            <span class="${memberColors[person.split(' ')[0]] || 'text-gray-700'}">${person}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button onclick="changeArrangement()" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+                            עבור לסידור הבא (#${((currentArrangement + 1) % 3) + 1})
+                        </button>
                     </div>
 
                     <div class="bg-white p-6 rounded-lg shadow-lg">
-                         <h3 class="text-lg font-bold text-gray-800 mb-4">הוספת משימה חד פעמית</h3>
+                        <h3 class="text-lg font-bold text-gray-800 mb-4">הוספת משימה חד פעמית</h3>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                             <input type="text" placeholder="כותרת המשימה" class="p-3 border rounded-lg" id="new-task-title">
                             <select class="p-3 border rounded-lg" id="new-task-assignee">
@@ -832,7 +1098,7 @@
                                             <div>
                                                 <div class="font-medium text-lg">${task.title}</div>
                                                 <div class="text-sm text-gray-600">
-                                                    אחראי: ${task.assignedTo}
+                                                    אחראי: <span class="${memberColors[task.assignedTo] || 'text-gray-700'}">${task.assignedTo}</span>
                                                     ${task.targetDate ? `• יעד: ${new Date(task.targetDate).toLocaleDateString('he-IL')}` : ''}
                                                 </div>
                                             </div>
@@ -908,27 +1174,22 @@
         
         function addNewCalendarEvent() {
             const activity = document.getElementById('new-event-activity');
-            const member = document.getElementById('new-event-member');
             const date = document.getElementById('new-event-date');
-            const time = document.getElementById('new-event-time');
             
-            const activeTransportBtn = document.querySelector('#transport-options .active');
-            const transportValue = activeTransportBtn ? activeTransportBtn.dataset.value : null;
+            const selectedMembers = Array.from(document.querySelectorAll('#member-options .active')).map(btn => btn.dataset.value);
+            const selectedTransports = Array.from(document.querySelectorAll('#transport-options .active')).map(btn => btn.dataset.value);
+            const selectedDriver = document.querySelector('#driver-options .active')?.dataset.value || null;
+            const selectedRecurring = document.querySelector('#recurring-options .active')?.dataset.value || 'none';
 
-            const activeRecurringBtn = document.querySelector('#recurring-options .active');
-            const recurringValue = activeRecurringBtn ? activeRecurringBtn.dataset.value : 'none';
-
-            if (activity.value && member.value && date.value && time.value) {
-                addCalendarEvent(activity.value, member.value, date.value, time.value, transportValue, recurringValue);
+            if (activity.value && selectedMembers.length > 0 && date.value) {
+                addCalendarEvent(activity.value, selectedMembers, date.value, selectedTransports, selectedDriver, selectedRecurring);
                 
                 // Reset form
                 activity.value = '';
-                member.value = '';
                 date.value = '';
-                time.value = '';
                 
-                // Reset transport buttons
-                document.querySelectorAll('#transport-options .active').forEach(btn => {
+                // Reset all buttons
+                document.querySelectorAll('#member-options .active, #transport-options .active, #driver-options .active').forEach(btn => {
                     btn.classList.remove('active');
                 });
                 
@@ -937,6 +1198,9 @@
                     btn.classList.remove('active');
                 });
                 document.querySelector('#recurring-options [data-value="none"]').classList.add('active');
+                
+                // Hide driver selection
+                document.getElementById('driver-selection').style.display = 'none';
             }
         }
 
