@@ -185,6 +185,30 @@
             background: #ddd6fe;
             border: 1px solid #7c3aed;
         }
+        .day-events-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1500;
+        }
+        .day-events-modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .day-events-content {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
         @media (max-width: 768px) {
             .week-grid {
                 grid-template-columns: 1fr;
@@ -297,6 +321,19 @@
         </div>
     </div>
 
+    <!-- Day events modal -->
+    <div id="day-events-modal" class="day-events-modal">
+        <div class="day-events-content">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-gray-800" id="day-events-title">אירועי היום</h3>
+                <button onclick="closeDayEventsModal()" class="text-gray-500 hover:text-gray-700">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <div id="day-events-content" class="space-y-3"></div>
+        </div>
+    </div>
+
     <div id="app" style="display: none;">
         <nav class="bg-white shadow-lg">
             <div class="max-w-7xl mx-auto px-4">
@@ -392,12 +429,28 @@
 
         // Helper Functions
         function formatDate(date) {
+            if (typeof date === 'string') {
+                const d = new Date(date + 'T00:00:00');
+                return d.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' });
+            }
             return new Date(date).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' });
         }
 
         function formatTime(time) {
             if (!time) return '';
             return time;
+        }
+
+        function getDateString(date) {
+            const d = new Date(date);
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function isSameDate(date1, date2) {
+            return getDateString(date1) === getDateString(date2);
         }
 
         function getWeekStartDate(weekOffset = 0) {
@@ -416,7 +469,7 @@
         }
 
         function getDayOfWeekFromDate(dateString) {
-            const date = new Date(dateString);
+            const date = new Date(dateString + 'T00:00:00');
             return daysOfWeekHebrew[date.getDay()];
         }
 
@@ -513,6 +566,72 @@
             });
         }
 
+        function getAllEventsForDate(dateString) {
+            const events = getFilteredCalendarEvents().filter(event => event.date === dateString);
+            const customTasks = getCustomTasksForDate(dateString);
+            return { events, customTasks };
+        }
+
+        function openDayEventsModal(dateString, dayName) {
+            const { events, customTasks } = getAllEventsForDate(dateString);
+            const allItems = [...events, ...customTasks];
+            
+            if (allItems.length === 0) return;
+            
+            const title = `${dayName} - ${formatDate(dateString)}`;
+            document.getElementById('day-events-title').textContent = title;
+            
+            let content = '';
+            
+            if (events.length > 0) {
+                content += '<h4 class="font-bold text-gray-800 mb-2">אירועי לוח שנה:</h4>';
+                content += '<div class="space-y-2 mb-4">';
+                events.forEach(event => {
+                    content += `
+                        <div class="p-3 bg-indigo-50 border border-indigo-200 rounded">
+                            <div class="font-medium text-indigo-800">${event.activity}</div>
+                            ${event.time ? `<div class="text-sm text-indigo-600">⏰ ${formatTime(event.time)}</div>` : ''}
+                            ${event.transport ? `<div class="text-sm text-indigo-600">🚗 ${event.transport} ${event.transportTime ? `- ${formatTime(event.transportTime)}` : ''}</div>` : ''}
+                            <div class="text-sm text-gray-600">👥 ${Array.isArray(event.members) ? event.members.join(', ') : event.member || ''}</div>
+                        </div>
+                    `;
+                });
+                content += '</div>';
+            }
+            
+            if (customTasks.length > 0) {
+                content += '<h4 class="font-bold text-gray-800 mb-2">משימות מותאמות אישית:</h4>';
+                content += '<div class="space-y-2">';
+                customTasks.forEach(task => {
+                    content += `
+                        <div class="p-3 bg-yellow-50 border border-yellow-200 rounded">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-2">
+                                    <button onclick="toggleCustomTask(${task.id}); setTimeout(() => { location.reload(); }, 500);">
+                                        <i data-lucide="${task.completed ? 'check-circle' : 'circle'}" 
+                                           class="w-5 h-5 ${task.completed ? 'text-green-600' : 'text-yellow-500'}"></i>
+                                    </button>
+                                    <div>
+                                        <div class="font-medium ${task.completed ? 'line-through text-gray-500' : 'text-yellow-800'}">📋 ${task.title}</div>
+                                        <div class="text-sm text-gray-600">אחראי: ${task.assignedTo}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                content += '</div>';
+            }
+            
+            document.getElementById('day-events-content').innerHTML = content;
+            document.getElementById('day-events-modal').classList.add('show');
+            lucide.createIcons();
+        }
+
+        function closeDayEventsModal() {
+            document.getElementById('day-events-modal').classList.remove('show');
+        }
+
         // Transport and Recurring functions
         function toggleTransport(selectedBtn, context = 'new') {
             const isAlreadyActive = selectedBtn.classList.contains('active');
@@ -581,7 +700,7 @@
         // Recurring event generation
         function generateRecurringEvents(baseEvent, recurringType, endDate = null) {
             const events = [];
-            const baseDate = new Date(baseEvent.date);
+            const baseDate = new Date(baseEvent.date + 'T00:00:00');
             const maxEvents = 52;
             let currentDate = new Date(baseDate);
             let count = 0;
@@ -596,7 +715,7 @@
                     const newEvent = {
                         ...baseEvent,
                         id: Date.now() + count,
-                        date: currentDate.toISOString().split('T')[0],
+                        date: getDateString(currentDate),
                         isRecurring: true,
                         originalEventId: baseEvent.id
                     };
@@ -969,7 +1088,7 @@
             
             // Get today's events with correct date handling
             const today = new Date();
-            const todayStr = today.toISOString().split('T')[0];
+            const todayStr = getDateString(today);
             const todayEvents = getFilteredCalendarEvents().filter(event => event.date === todayStr);
             
             const getWeekTasksHTML = (weekOffset) => {
@@ -982,61 +1101,73 @@
                         ${daysOfWeekHebrew.map(day => {
                             const dayTasks = weekTasks[day] || {};
                             const filteredTasks = getFilteredTasks(dayTasks, dayTasks);
+                            
+                            // Filter out completed tasks for weekly view
+                            const openTasks = {};
+                            Object.entries(filteredTasks).forEach(([taskName, taskInfo]) => {
+                                if (!taskInfo.completed) {
+                                    openTasks[taskName] = taskInfo;
+                                }
+                            });
+                            
                             const dayDate = new Date(weekStart);
                             const dayIndex = daysOfWeekHebrew.indexOf(day);
                             dayDate.setDate(weekStart.getDate() + dayIndex);
-                            const isToday = dayDate.toDateString() === today.toDateString();
-                            const dateStr = dayDate.toISOString().split('T')[0];
+                            const isToday = isSameDate(dayDate, today);
+                            const dateStr = getDateString(dayDate);
                             const dayEvents = getFilteredCalendarEvents().filter(event => event.date === dateStr);
-                            const dayCustomTasks = getCustomTasksForDate(dateStr);
+                            const dayCustomTasks = getCustomTasksForDate(dateStr).filter(task => !task.completed);
+                            
+                            const totalItems = Object.keys(openTasks).length + dayEvents.length + dayCustomTasks.length;
+                            const hasItems = totalItems > 0;
                             
                             return `
-                                <div class="bg-white p-4 rounded-lg shadow ${isToday ? 'border-2 border-blue-400' : 'border border-gray-200'}">
+                                <div class="bg-white p-4 rounded-lg shadow ${isToday ? 'border-2 border-blue-400' : 'border border-gray-200'} ${hasItems ? 'cursor-pointer hover:shadow-md' : ''}" 
+                                     ${hasItems ? `onclick="openDayEventsModal('${dateStr}', '${day}')"` : ''}>
                                     <div class="text-center mb-3">
                                         <h4 class="font-bold text-gray-800">${day}</h4>
                                         <p class="text-xs text-gray-500">${formatDate(dayDate)}</p>
                                         ${isToday ? '<p class="text-xs text-blue-600 font-bold">היום</p>' : ''}
+                                        ${totalItems > 0 ? `<p class="text-xs text-green-600 font-bold">${totalItems} פריטים</p>` : ''}
                                     </div>
                                     
                                     <div class="space-y-2">
-                                        ${Object.entries(filteredTasks).map(([task, taskInfo]) => `
-                                            <div class="p-2 rounded text-xs weekly-task-item ${taskInfo.completed ? 'bg-green-50 border border-green-200' : ''}">
+                                        ${Object.entries(openTasks).slice(0, 2).map(([task, taskInfo]) => `
+                                            <div class="p-2 rounded text-xs weekly-task-item">
                                                 <div class="flex items-center justify-between">
-                                                    <button onclick="toggleWeeklyTask('${weekKey}', '${day}', '${task.replace(/'/g, "\\'")}')">
-                                                        <i data-lucide="${taskInfo.completed ? 'check-circle' : 'circle'}" 
-                                                           class="w-3 h-3 ${taskInfo.completed ? 'text-green-600' : 'text-gray-400 hover:text-green-500'}"></i>
+                                                    <button onclick="event.stopPropagation(); toggleWeeklyTask('${weekKey}', '${day}', '${task.replace(/'/g, "\\'")}')">
+                                                        <i data-lucide="circle" class="w-3 h-3 text-gray-400 hover:text-green-500"></i>
                                                     </button>
                                                     <div class="flex-1 mr-2">
-                                                        <div class="${taskInfo.completed ? 'line-through text-gray-500' : 'text-gray-800'}">${task}</div>
+                                                        <div class="text-gray-800">${task}</div>
                                                         <div class="text-xs ${memberColors[taskInfo.assignedTo.split(' ')[0]] || 'text-blue-600'} rounded px-1">${taskInfo.assignedTo}</div>
                                                     </div>
                                                 </div>
                                             </div>
                                         `).join('')}
                                         
-                                        ${dayEvents.map(event => `
+                                        ${dayEvents.slice(0, hasItems ? 1 : 2).map(event => `
                                             <div class="p-2 rounded text-xs calendar-event-item">
-                                                <div class="font-medium text-indigo-800">${event.activity}</div>
+                                                <div class="font-medium text-indigo-800 truncate">${event.activity}</div>
                                                 ${event.time ? `<div class="text-xs text-indigo-600">⏰ ${formatTime(event.time)}</div>` : ''}
-                                                ${event.transport ? `<div class="text-xs text-indigo-600">🚗 ${event.transport}</div>` : ''}
-                                                <div class="text-xs text-gray-600">👥 ${Array.isArray(event.members) ? event.members.join(', ') : event.member || ''}</div>
                                             </div>
                                         `).join('')}
                                         
-                                        ${dayCustomTasks.map(task => `
+                                        ${dayCustomTasks.slice(0, hasItems ? 1 : 2).map(task => `
                                             <div class="p-2 rounded text-xs custom-task-item">
                                                 <div class="flex items-center justify-between">
-                                                    <button onclick="toggleCustomTask(${task.id})">
-                                                        <i data-lucide="${task.completed ? 'check-circle' : 'circle'}" 
-                                                           class="w-3 h-3 ${task.completed ? 'text-green-600' : 'text-orange-400 hover:text-orange-500'}"></i>
+                                                    <button onclick="event.stopPropagation(); toggleCustomTask(${task.id})">
+                                                        <i data-lucide="circle" class="w-3 h-3 text-orange-400 hover:text-orange-500"></i>
                                                     </button>
                                                     <div class="flex-1 mr-2">
-                                                        <div class="${task.completed ? 'line-through text-gray-500' : 'text-orange-800'} font-medium">📋 ${task.title}</div>
+                                                        <div class="text-orange-800 font-medium truncate">📋 ${task.title}</div>
                                                         <div class="text-xs ${memberColors[task.assignedTo] || 'text-orange-600'} rounded px-1">${task.assignedTo}</div>
                                                     </div>
                                                 </div>
                                             </div>
                                         `).join('')}
+                                        
+                                        ${totalItems > 3 ? `<div class="text-xs text-gray-500 text-center">+${totalItems - 3} עוד...</div>` : ''}
                                     </div>
                                 </div>
                             `;
@@ -1080,20 +1211,19 @@
                     ` : ''}
 
                     <!-- Today's Custom Tasks -->
-                    ${getCustomTasksForDate(todayStr).length > 0 ? `
+                    ${getCustomTasksForDate(todayStr).filter(task => !task.completed).length > 0 ? `
                         <div class="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
                             <h3 class="text-lg font-bold text-yellow-800 mb-3">משימות ליום (${formatDate(today)})</h3>
                             <div class="space-y-2">
-                                ${getCustomTasksForDate(todayStr).map(task => `
+                                ${getCustomTasksForDate(todayStr).filter(task => !task.completed).map(task => `
                                     <div class="p-3 bg-white rounded border border-yellow-200">
                                         <div class="flex items-center justify-between">
                                             <div class="flex items-center space-x-2">
                                                 <button onclick="toggleCustomTask(${task.id})">
-                                                    <i data-lucide="${task.completed ? 'check-circle' : 'circle'}" 
-                                                       class="w-5 h-5 ${task.completed ? 'text-green-600' : 'text-yellow-500'}"></i>
+                                                    <i data-lucide="circle" class="w-5 h-5 text-yellow-500"></i>
                                                 </button>
                                                 <div>
-                                                    <div class="font-medium ${task.completed ? 'line-through text-gray-500' : 'text-yellow-800'}">📋 ${task.title}</div>
+                                                    <div class="font-medium text-yellow-800">📋 ${task.title}</div>
                                                     <div class="text-sm text-gray-600">אחראי: ${task.assignedTo}</div>
                                                 </div>
                                             </div>
@@ -1133,11 +1263,8 @@
                         <h3 class="text-xl font-bold">השבוע הנוכחי</h3>
                         <p class="text-sm opacity-90">${formatDate(getWeekStartDate(0))} - ${formatDate(new Date(getWeekStartDate(0).getTime() + 6 * 24 * 60 * 60 * 1000))}</p>
                         ${selectedMemberFilter ? `<p class="text-sm opacity-90">מציג משימות של: ${selectedMemberFilter}</p>` : ''}
+                        <p class="text-sm opacity-90">💡 לחץ על יום לראות את כל האירועים (מציג רק משימות פתוחות)</p>
                         <div class="text-xs mt-2 space-x-4">
-                            <span class="inline-flex items-center">
-                                <div class="w-3 h-3 weekly-task-item rounded mr-1"></div>
-                                משימות שבועיות
-                            </span>
                             <span class="inline-flex items-center">
                                 <div class="w-3 h-3 calendar-event-item rounded mr-1"></div>
                                 אירועי לוח שנה
@@ -1154,6 +1281,7 @@
                         <h3 class="text-xl font-bold">השבוע הבא</h3>
                         <p class="text-sm opacity-90">${formatDate(getWeekStartDate(1))} - ${formatDate(new Date(getWeekStartDate(1).getTime() + 6 * 24 * 60 * 60 * 1000))}</p>
                         ${selectedMemberFilter ? `<p class="text-sm opacity-90">מציג משימות של: ${selectedMemberFilter}</p>` : ''}
+                        <p class="text-sm opacity-90">💡 לחץ על יום לראות את כל האירועים (מציג רק משימות פתוחות)</p>
                     </div>
                     ${getWeekTasksHTML(1)}
                 </div>
@@ -1169,7 +1297,7 @@
             const startingDayOfWeek = firstDay.getDay();
             
             const monthEvents = getFilteredCalendarEvents().filter(event => {
-                const eventDate = new Date(event.date);
+                const eventDate = new Date(event.date + 'T00:00:00');
                 return eventDate.getMonth() === currentCalendarMonth && eventDate.getFullYear() === currentCalendarYear;
             });
 
@@ -1178,29 +1306,40 @@
                 return monthEvents.filter(event => event.date === dateStr);
             };
 
+            const getCustomTasksForDay = (day) => {
+                const dateStr = `${currentCalendarYear}-${String(currentCalendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                return getCustomTasksForDate(dateStr);
+            };
+
             const generateCalendar = () => {
                 let calendar = [];
                 let week = [];
                 
                 for (let i = 0; i < startingDayOfWeek; i++) {
-                    week.push('<div class="h-24 bg-gray-50"></div>');
+                    week.push('<div class="h-32 bg-gray-50"></div>');
                 }
                 
                 for (let day = 1; day <= daysInMonth; day++) {
                     const dayEvents = getEventsForDay(day);
+                    const dayCustomTasks = getCustomTasksForDay(day);
                     const today = new Date();
                     const isToday = today.getDate() === day && today.getMonth() === currentCalendarMonth && today.getFullYear() === currentCalendarYear;
+                    const dateStr = `${currentCalendarYear}-${String(currentCalendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    const totalItems = dayEvents.length + dayCustomTasks.length;
+                    const dayName = getDayOfWeekFromDate(dateStr);
                     
                     week.push(`
-                        <div class="h-24 border border-gray-200 p-1 ${isToday ? 'bg-blue-50 border-blue-300' : 'bg-white'}">
-                            <div class="text-sm font-medium ${isToday ? 'text-blue-700' : 'text-gray-700'}">${day}</div>
-                            <div class="mt-1 space-y-1 overflow-hidden">
+                        <div class="h-32 border border-gray-200 p-1 ${isToday ? 'bg-blue-50 border-blue-300' : 'bg-white'} ${totalItems > 0 ? 'cursor-pointer hover:shadow-md' : ''}" 
+                             ${totalItems > 0 ? `onclick="openDayEventsModal('${dateStr}', '${dayName}')"` : ''}>
+                            <div class="text-sm font-medium ${isToday ? 'text-blue-700' : 'text-gray-700'} mb-1">${day}</div>
+                            ${totalItems > 0 ? `<div class="text-xs text-green-600 font-bold mb-1">${totalItems} פריטים</div>` : ''}
+                            <div class="space-y-1 overflow-hidden">
                                 ${dayEvents.slice(0, 2).map(event => {
                                     const firstMember = Array.isArray(event.members) && event.members.length > 0 ? event.members[0] : event.member || '';
                                     const memberColor = memberColors[firstMember] || 'bg-gray-100 border-gray-300 text-gray-800';
                                     const eventObj = JSON.stringify(event).replace(/"/g, '&quot;');
                                     return `
-                                        <div class="text-xs p-1 rounded ${memberColor} truncate calendar-event" onclick="openEditModal(${event.id})" title="${event.activity}">
+                                        <div class="text-xs p-1 rounded ${memberColor} truncate calendar-event" onclick="event.stopPropagation(); openEditModal(${event.id})" title="${event.activity}">
                                             <div class="event-actions">
                                                 <button class="action-btn edit-btn" onclick="event.stopPropagation(); openEditModal(${event.id})" title="ערוך">
                                                     ✏️
@@ -1209,12 +1348,17 @@
                                                     🗑️
                                                 </button>
                                             </div>
-                                            ${event.activity.substring(0, 15)}${event.activity.length > 15 ? '...' : ''}
+                                            ${event.activity.substring(0, 12)}${event.activity.length > 12 ? '...' : ''}
                                             ${event.time ? `<br>⏰ ${formatTime(event.time)}` : ''}
                                         </div>
                                     `;
                                 }).join('')}
-                                ${dayEvents.length > 2 ? `<div class="text-xs text-gray-500">+${dayEvents.length - 2} עוד</div>` : ''}
+                                ${dayCustomTasks.slice(0, totalItems > 2 ? 1 : 2).map(task => `
+                                    <div class="text-xs p-1 rounded custom-task-item truncate" title="${task.title}">
+                                        📋 ${task.title.substring(0, 10)}${task.title.length > 10 ? '...' : ''}
+                                    </div>
+                                `).join('')}
+                                ${totalItems > 3 ? `<div class="text-xs text-gray-500 text-center">+${totalItems - 3}</div>` : ''}
                             </div>
                         </div>
                     `);
@@ -1226,7 +1370,7 @@
                 }
                 
                 while (week.length < 7 && week.length > 0) {
-                    week.push('<div class="h-24 bg-gray-50"></div>');
+                    week.push('<div class="h-32 bg-gray-50"></div>');
                 }
                 if (week.length === 7) {
                     calendar.push(`<div class="grid grid-cols-7 gap-1">${week.join('')}</div>`);
@@ -1299,6 +1443,8 @@
                                 `<div class="text-center font-medium text-gray-600 py-2">${day}</div>`
                             ).join('')}
                         </div>
+                        
+                        <p class="text-sm text-gray-600 mb-4">💡 לחץ על יום עם אירועים לראות את כל הפרטים</p>
                         
                         ${generateCalendar()}
                     </div>
@@ -1458,7 +1604,7 @@
                                                 <div class="font-medium text-lg">${task.title}</div>
                                                 <div class="text-sm text-gray-600">
                                                     אחראי: <span class="${memberColors[task.assignedTo] || 'text-gray-700'}">${task.assignedTo}</span>
-                                                    ${task.targetDate ? `• יעד: ${new Date(task.targetDate).toLocaleDateString('he-IL')}` : ''}
+                                                    ${task.targetDate ? `• יעד: ${new Date(task.targetDate + 'T00:00:00').toLocaleDateString('he-IL')}` : ''}
                                                 </div>
                                             </div>
                                         </div>
@@ -1610,4 +1756,8 @@
         });
     </script>
 </body>
-</html>
+</html>3 h-3 weekly-task-item rounded mr-1"></div>
+                                משימות שבועיות
+                            </span>
+                            <span class="inline-flex items-center">
+                                <div class="w-
