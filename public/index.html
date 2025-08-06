@@ -395,6 +395,7 @@
         let currentCalendarMonth = new Date().getMonth();
         let currentCalendarYear = new Date().getFullYear();
         let selectedMemberFilter = null;
+        let lastArrangementUpdate = null;
 
         const familyMembers = ['טליה', 'שביט', 'שגיא', 'אביתר', 'לביא'];
         const drivers = ['שביט', 'טליה'];
@@ -589,10 +590,19 @@
                 events.forEach(event => {
                     content += `
                         <div class="p-3 bg-indigo-50 border border-indigo-200 rounded">
-                            <div class="font-medium text-indigo-800">${event.activity}</div>
-                            ${event.time ? `<div class="text-sm text-indigo-600">⏰ ${formatTime(event.time)}</div>` : ''}
-                            ${event.transport ? `<div class="text-sm text-indigo-600">🚗 ${event.transport} ${event.transportTime ? `- ${formatTime(event.transportTime)}` : ''}</div>` : ''}
-                            <div class="text-sm text-gray-600">👥 ${Array.isArray(event.members) ? event.members.join(', ') : event.member || ''}</div>
+                            <div class="flex justify-between items-start">
+                                <div class="flex-1">
+                                    <div class="font-medium text-indigo-800">${event.activity}</div>
+                                    ${event.time ? `<div class="text-sm text-indigo-600">⏰ ${formatTime(event.time)}</div>` : ''}
+                                    ${event.transport ? `<div class="text-sm text-indigo-600">🚗 ${event.transport} ${event.transportTime ? `- ${formatTime(event.transportTime)}` : ''}</div>` : ''}
+                                    <div class="text-sm text-gray-600">👥 ${Array.isArray(event.members) ? event.members.join(', ') : event.member || ''}</div>
+                                </div>
+                                <button onclick="closeDayEventsModal(); openEditModal(${event.id})" 
+                                        class="ml-2 px-2 py-1 bg-indigo-500 text-white rounded text-xs hover:bg-indigo-600 flex items-center">
+                                    <i data-lucide="edit" class="w-3 h-3 ml-1"></i>
+                                    ערוך
+                                </button>
+                            </div>
                         </div>
                     `;
                 });
@@ -739,6 +749,62 @@
             return events;
         }
 
+        // Check and update arrangement if needed
+        async function checkAndUpdateArrangement() {
+            const now = new Date();
+            const lastUpdate = lastArrangementUpdate ? new Date(lastArrangementUpdate) : null;
+            
+            // Check if it's past Saturday 23:59 since last update
+            if (shouldUpdateArrangement(now, lastUpdate)) {
+                console.log('Time to update arrangement automatically');
+                currentArrangement = (currentArrangement + 1) % 3;
+                lastArrangementUpdate = now.toISOString();
+                
+                // Save to Firebase
+                await saveData('arrangement', currentArrangement);
+                await saveData('lastArrangementUpdate', lastArrangementUpdate);
+                
+                // Reset weekly tasks for new arrangement
+                weeklyTasks = {};
+                initializeWeeklyTasks();
+                
+                console.log(`Arrangement automatically updated to #${currentArrangement + 1}`);
+            }
+        }
+        
+        function shouldUpdateArrangement(now, lastUpdate) {
+            // If no previous update recorded, don't update automatically
+            if (!lastUpdate) return false;
+            
+            // Get last Saturday 23:59
+            const lastSaturday = getLastSaturday2359();
+            
+            // If current time is after last Saturday 23:59 AND last update was before that Saturday
+            return now > lastSaturday && lastUpdate < lastSaturday;
+        }
+        
+        function getLastSaturday2359() {
+            const now = new Date();
+            const dayOfWeek = now.getDay(); // 0 = Sunday, 6 = Saturday
+            
+            let saturday = new Date(now);
+            
+            if (dayOfWeek === 6) { // Today is Saturday
+                // If it's before 23:59, use last Saturday
+                if (now.getHours() < 23 || (now.getHours() === 23 && now.getMinutes() < 59)) {
+                    saturday.setDate(saturday.getDate() - 7);
+                }
+                // If it's after 23:59, use today
+            } else {
+                // Go back to last Saturday
+                const daysBack = dayOfWeek === 0 ? 1 : dayOfWeek + 1;
+                saturday.setDate(saturday.getDate() - daysBack);
+            }
+            
+            saturday.setHours(23, 59, 0, 0);
+            return saturday;
+        }
+
         // Data processing function
         function processData(snapshot) {
             const data = snapshot.val();
@@ -748,14 +814,19 @@
                 shoppingList = [];
                 customTasks = [];
                 weeklyTasks = {};
+                lastArrangementUpdate = null;
             } else {
                 calendar = data.calendar || [];
                 shoppingList = data.shopping || [];
                 customTasks = data.customTasks || [];
                 weeklyTasks = data.weeklyTasks || {};
                 currentArrangement = data.arrangement || 0;
+                lastArrangementUpdate = data.lastArrangementUpdate || null;
             }
 
+            // Check for automatic arrangement update
+            checkAndUpdateArrangement();
+            
             initializeWeeklyTasks();
 
             if (isInitialLoad) {
@@ -991,14 +1062,6 @@
             }
         }
 
-        async function changeArrangement() {
-            currentArrangement = (currentArrangement + 1) % 3;
-            await saveData('arrangement', currentArrangement);
-            
-            weeklyTasks = {};
-            initializeWeeklyTasks();
-            renderCurrentView();
-        }
 
         // Other data functions
         async function addShoppingItem(item, addedBy) {
@@ -1102,10 +1165,11 @@
                             const dayTasks = weekTasks[day] || {};
                             const filteredTasks = getFilteredTasks(dayTasks, dayTasks);
                             
-                            // Filter out completed tasks for weekly view
+                            // Filter out completed tasks, dog walking, and weekly chores for home view
+                            const weeklyChores = ['פח', 'מחזור', 'מדיח'];
                             const openTasks = {};
                             Object.entries(filteredTasks).forEach(([taskName, taskInfo]) => {
-                                if (!taskInfo.completed) {
+                                if (!taskInfo.completed && taskName !== 'טיול עם במבה' && !weeklyChores.includes(taskName)) {
                                     openTasks[taskName] = taskInfo;
                                 }
                             });
@@ -1234,18 +1298,37 @@
                         </div>
                     ` : ''}
 
-                    <div class="bg-blue-50 p-4 rounded-lg flex justify-between items-center">
-                        <div>
-                            <h2 class="text-xl font-bold text-blue-800">סידור משימות #${currentArrangement + 1}</h2>
-                            <div class="text-sm text-blue-700 mt-1">
-                                ${Object.entries(currentArrangementData).map(([child, task]) => 
-                                    `<span class="inline-block ml-4 px-2 py-1 rounded ${memberColors[child]}">${child}: ${task}</span>`
-                                ).join('')}
+                    <!-- Weekly Task Arrangement -->
+                    <div class="bg-white p-4 rounded-lg shadow">
+                        <h3 class="text-lg font-bold text-gray-800 mb-3">ניהול משימות שבועיות</h3>
+                        
+                        <!-- Current Arrangement -->
+                        <div class="bg-blue-50 p-3 rounded-lg mb-3">
+                            <div>
+                                <h4 class="text-base font-semibold text-blue-800">סידור נוכחי #${currentArrangement + 1}</h4>
+                                <div class="text-sm text-blue-700 mt-1">
+                                    ${Object.entries(currentArrangementData).map(([child, task]) => 
+                                        `<span class="inline-block ml-2 px-2 py-1 rounded text-xs ${memberColors[child]}">${child}: ${task}</span>`
+                                    ).join('')}
+                                </div>
+                                <div class="text-xs text-blue-600 mt-2">
+                                    🔄 מתעדכן אוטומטית כל מוצאי שבת ב-23:59
+                                </div>
                             </div>
                         </div>
-                        <button onclick="changeArrangement()" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
-                            סידור הבא
-                        </button>
+                        
+                        <!-- Dog Walking Schedule -->
+                        <div class="bg-gray-50 p-3 rounded-lg">
+                            <h4 class="text-base font-semibold text-gray-700 mb-2">טיולים עם במבה</h4>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-1 text-xs">
+                                ${Object.entries(dogWalkingSchedule).map(([day, person]) => `
+                                    <div class="p-1 rounded bg-white border border-gray-200">
+                                        <span class="font-medium">${day}</span>: 
+                                        <span class="${memberColors[person.split(' ')[0]] || 'text-gray-700'}">${person}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
                     </div>
 
                     ${pendingShoppingItems > 0 ? `
@@ -1541,37 +1624,6 @@
                 <div class="space-y-6">
                     <h2 class="text-2xl font-bold text-gray-800">ניהול משימות</h2>
                     
-                    <div class="bg-white p-6 rounded-lg shadow-lg">
-                        <h3 class="text-lg font-bold text-gray-800 mb-4">סידור משימות שבועיות נוכחי #${currentArrangement + 1}</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <h4 class="font-medium text-gray-700 mb-3">משימות בית</h4>
-                                <div class="space-y-2">
-                                    ${Object.entries(currentArrangementData).map(([child, task]) => `
-                                        <div class="p-3 rounded-lg ${memberColors[child]}">
-                                            <span class="font-medium">${child}</span> - ${task}
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                            
-                            <div>
-                                <h4 class="font-medium text-gray-700 mb-3">טיולים עם במבה</h4>
-                                <div class="space-y-2">
-                                    ${Object.entries(dogWalkingSchedule).map(([day, person]) => `
-                                        <div class="p-2 rounded-lg bg-gray-50 border border-gray-200 text-sm">
-                                            <span class="font-medium">${day}</span> - 
-                                            <span class="${memberColors[person.split(' ')[0]] || 'text-gray-700'}">${person}</span>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <button onclick="changeArrangement()" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
-                            עבור לסידור הבא (#${((currentArrangement + 1) % 3) + 1})
-                        </button>
-                    </div>
 
                     <div class="bg-white p-6 rounded-lg shadow-lg">
                         <h3 class="text-lg font-bold text-gray-800 mb-4">הוספת משימה חד פעמית</h3>
