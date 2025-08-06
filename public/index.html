@@ -1795,10 +1795,21 @@
 
         // Delete from edit modal
         function deleteFromEdit() {
-            if (!editingEventId) return;
+            console.log('deleteFromEdit called');
+            console.log('editingEventId:', editingEventId);
+            
+            if (!editingEventId) {
+                console.error('No editingEventId set');
+                return;
+            }
             
             const event = calendar.find(e => e.id === editingEventId);
-            if (!event) return;
+            console.log('Found event:', event);
+            
+            if (!event) {
+                console.error('Event not found in calendar');
+                return;
+            }
             
             // Close edit modal first
             closeEditModal();
