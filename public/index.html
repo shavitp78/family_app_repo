@@ -215,6 +215,36 @@
                 grid-template-columns: 1fr;
                 gap: 8px;
             }
+            
+            .modal-content {
+                width: 95%;
+                max-width: none;
+                margin: 10px;
+                max-height: 95vh;
+            }
+            
+            .day-events-content {
+                width: 95%;
+                max-width: none;
+                margin: 10px;
+                padding: 16px;
+                max-height: 90vh;
+            }
+            
+            /* Mobile touch targets */
+            button, .calendar-event, [onclick] {
+                min-height: 44px;
+            }
+            
+            /* Mobile form elements */
+            input, select, textarea {
+                font-size: 16px; /* Prevent zoom on iOS */
+            }
+            
+            /* Mobile calendar */
+            .calendar-day {
+                min-height: 80px;
+            }
         }
     </style>
 </head>
@@ -227,30 +257,30 @@
     </div>
 
     <!-- Authentication Screen -->
-    <div id="auth-screen" class="fixed inset-0 bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center z-40" style="display: none;">
-        <div class="bg-white p-8 rounded-lg shadow-2xl max-w-md w-full mx-4">
+    <div id="auth-screen" class="fixed inset-0 bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center z-40 px-4 py-8" style="display: none;">
+        <div class="bg-white p-6 sm:p-8 rounded-lg shadow-2xl max-w-sm w-full">
             <div class="text-center mb-6">
-                <h1 class="text-3xl font-bold text-gray-800 mb-2">משפחת פופקו</h1>
-                <p class="text-gray-600">כניסה לאפליקציה המשפחתית</p>
+                <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">משפחת פופקו</h1>
+                <p class="text-sm sm:text-base text-gray-600">כניסה לאפליקציה המשפחתית</p>
             </div>
             
             <div id="auth-content">
-                <button id="google-signin-btn" class="w-full bg-white border border-gray-300 rounded-lg px-4 py-3 flex items-center justify-center hover:bg-gray-50 transition-colors">
-                    <svg class="w-5 h-5 mr-2" viewBox="0 0 24 24">
+                <button id="google-signin-btn" class="w-full bg-white border border-gray-300 rounded-lg px-4 py-3 flex items-center justify-center hover:bg-gray-50 transition-colors text-sm sm:text-base touch-manipulation">
+                    <svg class="w-5 h-5 mr-2 flex-shrink-0" viewBox="0 0 24 24">
                         <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                         <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
                         <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                         <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                     </svg>
-                    היכנס עם Google
+                    <span>היכנס עם Google</span>
                 </button>
                 
                 <div class="mt-4 text-center">
-                    <p class="text-sm text-gray-500">רק משתמשים מורשים יכולים להיכנס לאפליקציה</p>
+                    <p class="text-xs sm:text-sm text-gray-500">רק משתמשים מורשים יכולים להיכנס לאפליקציה</p>
                 </div>
             </div>
             
-            <div id="auth-error" class="mt-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm" style="display: none;"></div>
+            <div id="auth-error" class="mt-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-xs sm:text-sm" style="display: none;"></div>
         </div>
     </div>
 
@@ -265,13 +295,13 @@
             </div>
             
             <div class="space-y-4">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <input type="text" placeholder="פעילות" class="p-3 border rounded-lg" id="edit-event-activity">
-                    <input type="date" class="p-3 border rounded-lg" id="edit-event-date">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <input type="text" placeholder="פעילות" class="p-3 border rounded-lg text-base" id="edit-event-activity">
+                    <input type="date" class="p-3 border rounded-lg text-base" id="edit-event-date">
                 </div>
                 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <input type="time" class="p-3 border rounded-lg" id="edit-event-time" title="שעת האירוע">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <input type="time" class="p-3 border rounded-lg text-base" id="edit-event-time" title="שעת האירוע">
                     <div></div>
                 </div>
                 
@@ -365,23 +395,30 @@
 
     <div id="app" style="display: none;">
         <nav class="bg-white shadow-lg">
-            <div class="max-w-7xl mx-auto px-4">
-                <div class="flex justify-between items-center h-16">
-                    <h1 class="text-xl font-bold text-gray-800">ניהול משפחתי - משפחת פופקו</h1>
-                    <div class="flex items-center space-x-4">
-                        <div class="flex space-x-2" id="nav-buttons"></div>
-                        <div class="flex items-center space-x-2 border-r border-gray-300 pr-4">
-                            <span id="user-email" class="text-sm text-gray-600"></span>
-                            <button onclick="signOut()" class="px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600">
+            <div class="max-w-7xl mx-auto px-2 sm:px-4">
+                <div class="flex justify-between items-center h-14 sm:h-16">
+                    <h1 class="text-base sm:text-xl font-bold text-gray-800 truncate">
+                        <span class="hidden sm:inline">ניהול משפחתי - </span>משפחת פופקו
+                    </h1>
+                    <div class="flex items-center space-x-2 sm:space-x-4">
+                        <div class="hidden sm:flex space-x-2" id="nav-buttons"></div>
+                        <div class="flex items-center space-x-1 sm:space-x-2 border-r border-gray-300 pr-2 sm:pr-4">
+                            <button id="notification-btn" onclick="toggleNotifications()" class="px-2 py-1 rounded text-xs sm:text-sm touch-manipulation hidden" title="הודעות">
+                                <i data-lucide="bell" class="w-4 h-4"></i>
+                            </button>
+                            <span id="user-email" class="text-xs sm:text-sm text-gray-600 max-w-20 sm:max-w-none truncate"></span>
+                            <button onclick="signOut()" class="px-2 sm:px-3 py-1 bg-red-500 text-white rounded text-xs sm:text-sm hover:bg-red-600 touch-manipulation">
                                 יציאה
                             </button>
                         </div>
                     </div>
                 </div>
+                <!-- Mobile Navigation -->
+                <div class="sm:hidden pb-2" id="mobile-nav-buttons"></div>
             </div>
         </nav>
 
-        <main class="max-w-7xl mx-auto px-4 py-8" id="main-content"></main>
+        <main class="max-w-7xl mx-auto px-2 sm:px-4 py-4 sm:py-8" id="main-content"></main>
     </div>
 
     <script>
@@ -408,6 +445,131 @@
             'evyatarpopko@gmail.com',
             'lavipopko@gmail.com'
         ];
+
+        // Push Notification System
+        let notificationPermission = 'default';
+        let serviceWorkerRegistration = null;
+
+        // Check if push notifications are supported
+        function isPushSupported() {
+            return 'serviceWorker' in navigator && 'PushManager' in window;
+        }
+
+        // Register service worker for push notifications
+        async function registerServiceWorker() {
+            if (!isPushSupported()) {
+                console.log('Push notifications are not supported');
+                return false;
+            }
+
+            try {
+                // Register service worker inline
+                const swCode = `
+                    self.addEventListener('push', function(event) {
+                        const options = {
+                            body: event.data ? event.data.text() : 'משפחת פופקו - עדכון חדש',
+                            icon: '/icon-192x192.png',
+                            badge: '/badge-72x72.png',
+                            vibrate: [200, 100, 200],
+                            dir: 'rtl',
+                            lang: 'he',
+                            tag: 'popko-family',
+                            requireInteraction: true,
+                            actions: [
+                                {
+                                    action: 'open',
+                                    title: 'פתח אפליקציה',
+                                    icon: '/action-icon.png'
+                                },
+                                {
+                                    action: 'close',
+                                    title: 'סגור',
+                                    icon: '/close-icon.png'
+                                }
+                            ]
+                        };
+
+                        event.waitUntil(
+                            self.registration.showNotification('משפחת פופקו', options)
+                        );
+                    });
+
+                    self.addEventListener('notificationclick', function(event) {
+                        event.notification.close();
+
+                        if (event.action === 'open') {
+                            event.waitUntil(
+                                clients.openWindow('/')
+                            );
+                        }
+                    });
+                `;
+
+                const blob = new Blob([swCode], { type: 'application/javascript' });
+                const swUrl = URL.createObjectURL(blob);
+                
+                serviceWorkerRegistration = await navigator.serviceWorker.register(swUrl);
+                console.log('Service Worker registered successfully');
+                return true;
+            } catch (error) {
+                console.error('Service Worker registration failed:', error);
+                return false;
+            }
+        }
+
+        // Request notification permission
+        async function requestNotificationPermission() {
+            if (!isPushSupported()) {
+                return false;
+            }
+
+            try {
+                const permission = await Notification.requestPermission();
+                notificationPermission = permission;
+                
+                if (permission === 'granted') {
+                    console.log('Notification permission granted');
+                    await registerServiceWorker();
+                    return true;
+                } else {
+                    console.log('Notification permission denied');
+                    return false;
+                }
+            } catch (error) {
+                console.error('Error requesting notification permission:', error);
+                return false;
+            }
+        }
+
+        // Send local notification
+        function sendLocalNotification(title, body, options = {}) {
+            if (!isPushSupported() || notificationPermission !== 'granted') {
+                console.log('Notifications not available or not permitted');
+                return;
+            }
+
+            const defaultOptions = {
+                body: body,
+                icon: '/icon-192x192.png',
+                badge: '/badge-72x72.png',
+                vibrate: [200, 100, 200],
+                dir: 'rtl',
+                lang: 'he',
+                tag: 'popko-family',
+                requireInteraction: true,
+                ...options
+            };
+
+            try {
+                if (serviceWorkerRegistration) {
+                    serviceWorkerRegistration.showNotification(title, defaultOptions);
+                } else {
+                    new Notification(title, defaultOptions);
+                }
+            } catch (error) {
+                console.error('Error sending notification:', error);
+            }
+        }
 
         try {
             if (typeof firebase !== 'undefined') {
@@ -489,6 +651,63 @@
                 showAuthScreen();
             } catch (error) {
                 console.error('Sign out error:', error);
+            }
+        }
+
+        // Notification management functions
+        async function toggleNotifications() {
+            if (notificationPermission === 'granted') {
+                // Show notification settings or send test notification
+                sendLocalNotification('משפחת פופקו', 'התראות פעילות! 🔔');
+            } else if (notificationPermission === 'default') {
+                const granted = await requestNotificationPermission();
+                if (granted) {
+                    sendLocalNotification('משפחת פופקו', 'התראות הופעלו בהצלחה! 🎉');
+                    updateNotificationButton();
+                }
+            } else {
+                alert('התראות נחסמו בדפדפן. אנא אפשר התראות בהגדרות הדפדפן.');
+            }
+        }
+
+        function updateNotificationButton() {
+            const btn = document.getElementById('notification-btn');
+            if (!btn) return;
+
+            if (notificationPermission === 'granted') {
+                btn.className = 'px-2 py-1 bg-green-100 text-green-700 rounded text-xs sm:text-sm touch-manipulation';
+                btn.title = 'התראות פעילות - לחץ לבדיקה';
+            } else if (notificationPermission === 'default') {
+                btn.className = 'px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs sm:text-sm touch-manipulation';
+                btn.title = 'לחץ להפעלת התראות';
+            } else {
+                btn.className = 'px-2 py-1 bg-red-100 text-red-700 rounded text-xs sm:text-sm touch-manipulation';
+                btn.title = 'התראות חסומות';
+            }
+        }
+
+        function initializeNotifications() {
+            if (isPushSupported()) {
+                // Check current permission
+                notificationPermission = Notification.permission;
+                
+                // Show notification button
+                const btn = document.getElementById('notification-btn');
+                if (btn) {
+                    btn.classList.remove('hidden');
+                    updateNotificationButton();
+                }
+
+                // Auto-request permission if default (optional)
+                if (notificationPermission === 'default') {
+                    setTimeout(() => {
+                        requestNotificationPermission().then(granted => {
+                            if (granted) updateNotificationButton();
+                        });
+                    }, 2000); // Wait 2 seconds after app loads
+                } else if (notificationPermission === 'granted') {
+                    registerServiceWorker();
+                }
             }
         }
 
@@ -800,10 +1019,10 @@
                     <div class="flex items-center justify-between mb-2">
                         <h5 class="text-sm font-medium text-gray-700">${transport}</h5>
                     </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <input type="time" class="p-2 border rounded-lg" 
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <input type="time" class="p-2 border rounded-lg text-base" 
                                placeholder="שעה" data-transport="${transport}" data-field="time">
-                        <select class="p-2 border rounded-lg" data-transport="${transport}" data-field="driver">
+                        <select class="p-2 border rounded-lg text-base" data-transport="${transport}" data-field="driver">
                             <option value="">בחר מסיע</option>
                             ${drivers.map(driver => `<option value="${driver}">${driver}</option>`).join('')}
                         </select>
@@ -896,6 +1115,17 @@
                 initializeWeeklyTasks();
                 
                 console.log(`Arrangement automatically updated to #${currentArrangement + 1}`);
+                
+                // Send notification for arrangement change
+                if (currentUser && notificationPermission === 'granted') {
+                    const newArrangementData = taskArrangements[currentArrangement];
+                    const tasksText = Object.entries(newArrangementData).map(([child, task]) => `${child}: ${task}`).join(', ');
+                    sendLocalNotification(
+                        `סידור חדש פעיל! #${currentArrangement + 1} 🔄`,
+                        `${tasksText}`,
+                        { tag: 'arrangement-change' }
+                    );
+                }
             }
         }
         
@@ -1016,6 +1246,16 @@
             }
 
             await saveData('calendar', calendar);
+            
+            // Send notification for new event
+            if (currentUser && notificationPermission === 'granted') {
+                const membersList = Array.isArray(members) ? members.join(', ') : members;
+                sendLocalNotification(
+                    'אירוע חדש נוסף! 📅',
+                    `${activity} - ${membersList}${time ? ` בשעה ${formatTime(time)}` : ''}`,
+                    { tag: 'new-event' }
+                );
+            }
         }
 
         async function updateCalendarEvent(eventId, activity, members, date, time = null, transports = [], recurring = 'none') {
@@ -1201,6 +1441,15 @@
             };
             shoppingList.push(newItem);
             await saveData('shopping', shoppingList);
+            
+            // Send notification for new shopping item
+            if (currentUser && notificationPermission === 'granted') {
+                sendLocalNotification(
+                    'פריט חדש נוסף לקניות! 🛒',
+                    `${item} - נוסף על ידי ${addedBy}`,
+                    { tag: 'new-shopping' }
+                );
+            }
         }
 
         async function toggleShoppingItem(id) {
@@ -1227,6 +1476,15 @@
             };
             customTasks.push(newTask);
             await saveData('customTasks', customTasks);
+            
+            // Send notification for new custom task
+            if (currentUser && notificationPermission === 'granted') {
+                sendLocalNotification(
+                    'משימה חדשה נוצרה! 📋',
+                    `${title} - ${assignedTo}${targetDate ? ` עד ${formatDate(targetDate)}` : ''}`,
+                    { tag: 'new-task' }
+                );
+            }
         }
 
         async function toggleCustomTask(id) {
@@ -1251,24 +1509,50 @@
 
         function renderNavigation() {
             const navButtons = document.getElementById('nav-buttons');
-            navButtons.innerHTML = `
-                <button onclick="setCurrentView('home')" class="px-4 py-2 rounded-lg flex items-center space-x-1 ${currentView === 'home' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
+            const mobileNavButtons = document.getElementById('mobile-nav-buttons');
+            
+            const buttonHTML = `
+                <button onclick="setCurrentView('home')" class="px-3 sm:px-4 py-2 rounded-lg flex items-center space-x-1 text-sm touch-manipulation ${currentView === 'home' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
                     <i data-lucide="home" class="w-4 h-4"></i>
-                    <span>בית</span>
+                    <span class="hidden sm:inline">בית</span>
                 </button>
-                <button onclick="setCurrentView('calendar')" class="px-4 py-2 rounded-lg flex items-center space-x-1 ${currentView === 'calendar' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
+                <button onclick="setCurrentView('calendar')" class="px-3 sm:px-4 py-2 rounded-lg flex items-center space-x-1 text-sm touch-manipulation ${currentView === 'calendar' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
                     <i data-lucide="calendar" class="w-4 h-4"></i>
-                    <span>לוז</span>
+                    <span class="hidden sm:inline">לוח</span>
                 </button>
-                <button onclick="setCurrentView('shopping')" class="px-4 py-2 rounded-lg flex items-center space-x-1 ${currentView === 'shopping' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
+                <button onclick="setCurrentView('shopping')" class="px-3 sm:px-4 py-2 rounded-lg flex items-center space-x-1 text-sm touch-manipulation ${currentView === 'shopping' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
                     <i data-lucide="shopping-cart" class="w-4 h-4"></i>
-                    <span>קניות</span>
+                    <span class="hidden sm:inline">קניות</span>
                 </button>
-                <button onclick="setCurrentView('custom-tasks')" class="px-4 py-2 rounded-lg flex items-center space-x-1 ${currentView === 'custom-tasks' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
+                <button onclick="setCurrentView('custom-tasks')" class="px-3 sm:px-4 py-2 rounded-lg flex items-center space-x-1 text-sm touch-manipulation ${currentView === 'custom-tasks' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
                     <i data-lucide="plus" class="w-4 h-4"></i>
-                    <span>משימות</span>
+                    <span class="hidden sm:inline">משימות</span>
                 </button>
             `;
+            
+            const mobileButtonHTML = `
+                <div class="flex justify-center space-x-1 px-2">
+                    <button onclick="setCurrentView('home')" class="flex-1 px-3 py-2 rounded-lg flex flex-col items-center text-xs touch-manipulation ${currentView === 'home' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
+                        <i data-lucide="home" class="w-4 h-4 mb-1"></i>
+                        <span>בית</span>
+                    </button>
+                    <button onclick="setCurrentView('calendar')" class="flex-1 px-3 py-2 rounded-lg flex flex-col items-center text-xs touch-manipulation ${currentView === 'calendar' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
+                        <i data-lucide="calendar" class="w-4 h-4 mb-1"></i>
+                        <span>לוח</span>
+                    </button>
+                    <button onclick="setCurrentView('shopping')" class="flex-1 px-3 py-2 rounded-lg flex flex-col items-center text-xs touch-manipulation ${currentView === 'shopping' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
+                        <i data-lucide="shopping-cart" class="w-4 h-4 mb-1"></i>
+                        <span>קניות</span>
+                    </button>
+                    <button onclick="setCurrentView('custom-tasks')" class="flex-1 px-3 py-2 rounded-lg flex flex-col items-center text-xs touch-manipulation ${currentView === 'custom-tasks' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
+                        <i data-lucide="plus" class="w-4 h-4 mb-1"></i>
+                        <span>משימות</span>
+                    </button>
+                </div>
+            `;
+            
+            navButtons.innerHTML = buttonHTML;
+            mobileNavButtons.innerHTML = mobileButtonHTML;
             lucide.createIcons();
         }
 
@@ -1287,7 +1571,7 @@
                 const weekTasks = weeklyTasks[weekKey] || {};
                 
                 return `
-                    <div class="grid grid-cols-1 md:grid-cols-7 gap-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-2 sm:gap-3">
                         ${daysOfWeekHebrew.map(day => {
                             const dayTasks = weekTasks[day] || {};
                             const filteredTasks = getFilteredTasks(dayTasks, dayTasks);
@@ -1539,12 +1823,12 @@
                     const dayName = getDayOfWeekFromDate(dateStr);
                     
                     week.push(`
-                        <div class="h-32 border border-gray-200 p-1 ${isToday ? 'bg-blue-50 border-blue-300' : 'bg-white'} ${totalItems > 0 ? 'cursor-pointer hover:shadow-md' : ''}" 
+                        <div class="h-20 sm:h-32 border border-gray-200 p-1 ${isToday ? 'bg-blue-50 border-blue-300' : 'bg-white'} ${totalItems > 0 ? 'cursor-pointer hover:shadow-md' : ''} calendar-day" 
                              ${totalItems > 0 ? `onclick="openDayEventsModal('${dateStr}', '${dayName}')"` : ''}>
-                            <div class="text-sm font-medium ${isToday ? 'text-blue-700' : 'text-gray-700'} mb-1">${day}</div>
+                            <div class="text-xs sm:text-sm font-medium ${isToday ? 'text-blue-700' : 'text-gray-700'} mb-1">${day}</div>
                             ${totalItems > 0 ? `<div class="text-xs text-green-600 font-bold mb-1">${totalItems} פריטים</div>` : ''}
                             <div class="space-y-1 overflow-hidden">
-                                ${dayEvents.slice(0, 2).map(event => {
+                                ${dayEvents.slice(0, 1).map(event => {
                                     const firstMember = Array.isArray(event.members) && event.members.length > 0 ? event.members[0] : event.member || '';
                                     const memberColor = memberColors[firstMember] || 'bg-gray-100 border-gray-300 text-gray-800';
                                     const eventObj = JSON.stringify(event).replace(/"/g, '&quot;');
@@ -1595,27 +1879,27 @@
                     
                     <div class="bg-white p-6 rounded-lg shadow-lg">
                         <h3 class="text-lg font-bold text-gray-800 mb-4">הוספת אירוע</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                            <input type="text" placeholder="פעילות" class="p-3 border rounded-lg" id="new-event-activity">
-                            <input type="date" class="p-3 border rounded-lg" id="new-event-date">
-                            <input type="time" class="p-3 border rounded-lg" id="new-event-time" title="שעת האירוע">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                            <input type="text" placeholder="פעילות" class="p-3 border rounded-lg text-base" id="new-event-activity">
+                            <input type="date" class="p-3 border rounded-lg text-base" id="new-event-date">
+                            <input type="time" class="p-3 border rounded-lg text-base" id="new-event-time" title="שעת האירוע">
                         </div>
 
                         <div class="mb-4">
                             <h4 class="text-sm font-medium text-gray-700 mb-2">משתתפים (בחירה מרובה)</h4>
                             <div id="member-options" class="flex items-center gap-2 flex-wrap">
                                 ${familyMembers.map(member => `
-                                    <button type="button" class="transport-option-btn" data-value="${member}" onclick="toggleMember(this)">${member}</button>
+                                    <button type="button" class="transport-option-btn touch-manipulation" data-value="${member}" onclick="toggleMember(this)">${member}</button>
                                 `).join('')}
                             </div>
                         </div>
 
                         <div class="mb-4">
                             <h4 class="text-sm font-medium text-gray-700 mb-2">סוג הסעה (בחירה מרובה)</h4>
-                            <div id="transport-options" class="flex items-center gap-3 mb-3">
-                                <button type="button" class="transport-option-btn" data-value="הלוך" onclick="toggleTransport(this)">הלוך</button>
-                                <button type="button" class="transport-option-btn" data-value="חזור" onclick="toggleTransport(this)">חזור</button>
-                                <button type="button" class="transport-option-btn" data-value="לרכבת" onclick="toggleTransport(this)">לרכבת</button>
+                            <div id="transport-options" class="flex items-center gap-2 sm:gap-3 mb-3 flex-wrap">
+                                <button type="button" class="transport-option-btn touch-manipulation" data-value="הלוך" onclick="toggleTransport(this)">הלוך</button>
+                                <button type="button" class="transport-option-btn touch-manipulation" data-value="חזור" onclick="toggleTransport(this)">חזור</button>
+                                <button type="button" class="transport-option-btn touch-manipulation" data-value="לרכבת" onclick="toggleTransport(this)">לרכבת</button>
                             </div>
                             
                             <div id="transport-times" class="space-y-3"></div>
@@ -1624,10 +1908,10 @@
                         <div class="mb-4">
                             <h4 class="text-sm font-medium text-gray-700 mb-2">אירוע חוזר</h4>
                             <div id="recurring-options" class="flex items-center gap-2 flex-wrap">
-                                <button type="button" class="recurring-option-btn active" data-value="none" onclick="toggleRecurring(this)">ללא חזרה</button>
-                                <button type="button" class="recurring-option-btn" data-value="daily" onclick="toggleRecurring(this)">יומי</button>
-                                <button type="button" class="recurring-option-btn" data-value="weekly" onclick="toggleRecurring(this)">שבועי</button>
-                                <button type="button" class="recurring-option-btn" data-value="monthly" onclick="toggleRecurring(this)">חודשי</button>
+                                <button type="button" class="recurring-option-btn active touch-manipulation" data-value="none" onclick="toggleRecurring(this)">ללא חזרה</button>
+                                <button type="button" class="recurring-option-btn touch-manipulation" data-value="daily" onclick="toggleRecurring(this)">יומי</button>
+                                <button type="button" class="recurring-option-btn touch-manipulation" data-value="weekly" onclick="toggleRecurring(this)">שבועי</button>
+                                <button type="button" class="recurring-option-btn touch-manipulation" data-value="monthly" onclick="toggleRecurring(this)">חודשי</button>
                             </div>
                         </div>
                         
@@ -1650,7 +1934,7 @@
                         
                         <div class="grid grid-cols-7 gap-1 mb-2">
                             ${['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'].map(day => 
-                                `<div class="text-center font-medium text-gray-600 py-2">${day}</div>`
+                                `<div class="text-center font-medium text-gray-600 py-1 sm:py-2 text-sm">${day}</div>`
                             ).join('')}
                         </div>
                         
@@ -1679,14 +1963,14 @@
                 <div class="space-y-6">
                     <h2 class="text-2xl font-bold text-gray-800">רשימת קניות</h2>
                     <div class="bg-white p-6 rounded-lg shadow-lg">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <input type="text" placeholder="מה לקנות?" class="p-3 border rounded-lg" id="new-item" onkeypress="if(event.key === 'Enter') addNewShoppingItem()">
-                            <select class="p-3 border rounded-lg" id="new-item-by">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                            <input type="text" placeholder="מה לקנות?" class="p-3 border rounded-lg text-base" id="new-item" onkeypress="if(event.key === 'Enter') addNewShoppingItem()">
+                            <select class="p-3 border rounded-lg text-base" id="new-item-by">
                                 <option value="">מי מבקש?</option>
                                 ${familyMembers.map(member => `<option value="${member}">${member}</option>`).join('')}
                             </select>
                         </div>
-                        <button onclick="addNewShoppingItem()" class="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600">
+                        <button onclick="addNewShoppingItem()" class="w-full sm:w-auto px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 touch-manipulation">
                             הוסף לרשימה
                         </button>
                     </div>
@@ -1754,15 +2038,15 @@
 
                     <div class="bg-white p-6 rounded-lg shadow-lg">
                         <h3 class="text-lg font-bold text-gray-800 mb-4">הוספת משימה חד פעמית</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                            <input type="text" placeholder="כותרת המשימה" class="p-3 border rounded-lg" id="new-task-title">
-                            <select class="p-3 border rounded-lg" id="new-task-assignee">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                            <input type="text" placeholder="כותרת המשימה" class="p-3 border rounded-lg text-base" id="new-task-title">
+                            <select class="p-3 border rounded-lg text-base" id="new-task-assignee">
                                 <option value="">למי להקצות?</option>
                                 ${familyMembers.map(member => `<option value="${member}">${member}</option>`).join('')}
                             </select>
-                            <input type="date" class="p-3 border rounded-lg" id="new-task-target-full" title="תאריך יעד">
+                            <input type="date" class="p-3 border rounded-lg text-base" id="new-task-target-full" title="תאריך יעד">
                         </div>
-                        <button onclick="addNewCustomTask()" class="px-6 py-3 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600">
+                        <button onclick="addNewCustomTask()" class="w-full sm:w-auto px-6 py-3 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 touch-manipulation">
                             הוסף משימה
                         </button>
                     </div>
@@ -1848,6 +2132,9 @@
                 console.error('Database not initialized. Halting execution.');
                 return;
             }
+
+            // Initialize notifications
+            initializeNotifications();
 
             // Listen for real-time updates from Firebase
             try {
