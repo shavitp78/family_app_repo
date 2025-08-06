@@ -278,9 +278,14 @@
                 <div class="mt-4 text-center">
                     <p class="text-xs sm:text-sm text-gray-500">רק משתמשים מורשים יכולים להיכנס לאפליקציה</p>
                     <p class="text-xs text-gray-400 mt-1" id="ios-hint" style="display: none;">על iOS, ייתכן שתועבר לדף Google</p>
-                    <button onclick="showDebugInfo()" class="mt-2 text-xs text-gray-400 hover:text-gray-600" style="background: none; border: none; text-decoration: underline;">
-                        Debug Info (למפתח)
-                    </button>
+                    <div class="flex gap-2 justify-center mt-2">
+                        <button onclick="showDebugInfo()" class="text-xs text-gray-400 hover:text-gray-600" style="background: none; border: none; text-decoration: underline;">
+                            Debug Info
+                        </button>
+                        <button onclick="testBasicAuth()" class="text-xs text-blue-400 hover:text-blue-600" style="background: none; border: none; text-decoration: underline;">
+                            Test Auth
+                        </button>
+                    </div>
                     <div id="debug-output" class="mt-2 p-2 bg-gray-50 rounded text-xs text-left" style="display: none; font-family: monospace;"></div>
                 </div>
             </div>
@@ -653,53 +658,53 @@
 
         async function signInWithGoogle() {
             try {
+                console.log('Sign in attempt started');
                 hideAuthError();
+                
+                // Show loading state
+                const signInText = document.getElementById('signin-text');
+                if (signInText) {
+                    signInText.textContent = 'מתחבר...';
+                }
+                
                 const provider = new firebase.auth.GoogleAuthProvider();
                 
-                // Configure provider for better iOS compatibility
-                provider.setCustomParameters({
-                    prompt: 'select_account'
-                });
-
-                let result;
+                // Try popup first (works on most devices)
+                console.log('Attempting popup sign in');
+                const result = await auth.signInWithPopup(provider);
                 
-                // Check if we're on iOS/mobile Safari and use redirect instead of popup
-                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-                const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
-                const isMobileSafari = isIOS && isSafari;
+                console.log('Sign in successful:', result.user.email);
+                await handleSignInResult(result.user);
                 
-                if (isMobileSafari || window.innerWidth < 768) {
-                    // Use redirect for iOS Safari and mobile devices
-                    console.log('Using signInWithRedirect for better mobile compatibility');
-                    
-                    // Show loading state
-                    const signInText = document.getElementById('signin-text');
-                    if (signInText) {
-                        signInText.textContent = 'מעביר לGoogle...';
-                    }
-                    
-                    await auth.signInWithRedirect(provider);
-                    return; // The redirect will handle the rest
-                } else {
-                    // Use popup for desktop
-                    result = await auth.signInWithPopup(provider);
-                }
-                
-                if (result && result.user) {
-                    await handleSignInResult(result.user);
-                }
             } catch (error) {
                 console.error('Sign in error:', error);
                 
-                // Handle specific iOS/Safari errors
-                if (error.code === 'auth/unauthorized-domain') {
-                    showAuthError('Domain לא מורשה. אנא צור קשר עם המפתח.');
-                } else if (error.code === 'auth/popup-blocked') {
-                    showAuthError('החלון הקופץ נחסם. אנא אפשר חלונות קופצים ונסה שוב.');
-                } else if (error.code === 'auth/cancelled-popup-request') {
-                    showAuthError('הכניסה בוטלה.');
+                // Reset button text
+                const signInText = document.getElementById('signin-text');
+                if (signInText) {
+                    signInText.textContent = 'היכנס עם Google';
+                }
+                
+                // Try redirect as fallback for mobile
+                if (error.code === 'auth/popup-blocked' || error.code === 'auth/cancelled-popup-request') {
+                    console.log('Popup failed, trying redirect...');
+                    try {
+                        if (signInText) {
+                            signInText.textContent = 'מעביר לGoogle...';
+                        }
+                        await auth.signInWithRedirect(provider);
+                        return;
+                    } catch (redirectError) {
+                        console.error('Redirect also failed:', redirectError);
+                        showAuthError('כניסה נכשלה. אנא נסה שוב או נסה בדפדפן אחר.');
+                    }
                 } else {
-                    showAuthError('שגיאה בכניסה. אנא נסה שוב.');
+                    // Show specific error messages
+                    if (error.code === 'auth/unauthorized-domain') {
+                        showAuthError('Domain לא מורשה. אנא צור קשר עם המפתח.');
+                    } else {
+                        showAuthError('שגיאה בכניסה: ' + (error.message || 'אנא נסה שוב'));
+                    }
                 }
             }
         }
@@ -775,9 +780,69 @@
             }
         }
 
-        // Also make available globally
+        // Test basic auth functionality
+        function testBasicAuth() {
+            try {
+                const debugOutput = document.getElementById('debug-output');
+                if (!debugOutput) {
+                    alert('Debug output not found');
+                    return;
+                }
+
+                let testText = '=== AUTH TEST ===\n';
+                testText += 'Starting basic auth test...\n';
+
+                // Test Firebase
+                if (typeof firebase === 'undefined') {
+                    testText += 'ERROR: Firebase not loaded!\n';
+                    debugOutput.textContent = testText;
+                    debugOutput.style.display = 'block';
+                    return;
+                }
+                testText += 'Firebase: OK\n';
+
+                // Test Auth
+                if (!auth) {
+                    testText += 'ERROR: Auth not initialized!\n';
+                    debugOutput.textContent = testText;
+                    debugOutput.style.display = 'block';
+                    return;
+                }
+                testText += 'Auth: OK\n';
+
+                // Test provider creation
+                try {
+                    const provider = new firebase.auth.GoogleAuthProvider();
+                    testText += 'Google Provider: OK\n';
+                } catch (providerError) {
+                    testText += 'Google Provider ERROR: ' + providerError.message + '\n';
+                }
+
+                // Test button functionality
+                const signInBtn = document.getElementById('google-signin-btn');
+                if (signInBtn) {
+                    testText += 'Sign-in button: Found\n';
+                } else {
+                    testText += 'Sign-in button: NOT FOUND\n';
+                }
+
+                testText += '\nTest complete. If all OK, try signing in.\n';
+                
+                debugOutput.textContent = testText;
+                debugOutput.style.display = 'block';
+                console.log(testText);
+
+            } catch (error) {
+                const msg = 'Test error: ' + error.message;
+                alert(msg);
+                console.error(msg, error);
+            }
+        }
+
+        // Make functions available globally
         window.debugAuth = showDebugInfo;
         window.showDebugInfo = showDebugInfo;
+        window.testBasicAuth = testBasicAuth;
 
         async function signOut() {
             try {
@@ -848,63 +913,46 @@
 
         // Monitor authentication state
         function setupAuthStateListener() {
-            console.log('Setting up auth state listener...');
+            console.log('Setting up simplified auth state listener...');
             
-            // Handle redirect result first (for iOS Safari) with retry mechanism
-            const checkRedirectResult = async (retryCount = 0) => {
-                try {
-                    console.log(`Checking redirect result (attempt ${retryCount + 1})...`);
-                    const result = await auth.getRedirectResult();
-                    console.log('Redirect result:', result);
-                    
+            // Check for redirect result first
+            auth.getRedirectResult()
+                .then((result) => {
+                    console.log('Redirect result check:', result);
                     if (result && result.user) {
-                        console.log('Redirect sign-in successful for user:', result.user.email);
+                        console.log('Redirect sign-in successful:', result.user.email);
                         handleSignInResult(result.user);
-                        return;
-                    } 
-                    
-                    console.log('No redirect result or no user in result');
-                    
-                    // If no result and we haven't retried yet, try once more after a delay
-                    if (retryCount === 0) {
-                        setTimeout(() => checkRedirectResult(1), 1000);
                     }
-                } catch (error) {
-                    console.error('Redirect sign-in error:', error);
-                    if (error.code === 'auth/unauthorized-domain') {
-                        showAuthError('Domain לא מורשה. אנא צור קשר עם המפתח.');
-                    } else if (error.code === 'auth/web-storage-unsupported') {
-                        showAuthError('הדפדפן לא תומך באחסון. אנא נסה בדפדפן אחר.');
-                    } else {
-                        showAuthError('שגיאה בכניסה: ' + (error.message || 'אנא נסה שוב'));
-                    }
-                    showAuthScreen();
-                }
-            };
-            
-            checkRedirectResult();
+                })
+                .catch((error) => {
+                    console.error('Redirect result error:', error);
+                    showAuthError('שגיאה בחזרה מGoogle: ' + error.message);
+                });
 
-            // Monitor ongoing auth state changes
+            // Simple auth state monitoring
             auth.onAuthStateChanged((user) => {
-                console.log('Auth state changed. User:', user ? user.email : 'null');
+                console.log('Auth state changed:', user ? user.email : 'no user');
                 
-                if (user && isEmailApproved(user.email)) {
-                    console.log('User is approved and signed in:', user.email);
-                    currentUser = user;
-                    if (document.getElementById('user-email')) {
-                        document.getElementById('user-email').textContent = user.email;
-                    }
-                    hideAuthError();
-                    showApp();
-                    initializeApp();
-                } else if (user && !isEmailApproved(user.email)) {
-                    console.log('User signed in but not approved:', user.email);
-                    auth.signOut().then(() => {
-                        showAuthError('הכניסה נדחתה. רק משתמשים מורשים יכולים לגשת לאפליקציה: ' + user.email);
+                if (user) {
+                    console.log('User signed in, checking approval...');
+                    if (isEmailApproved(user.email)) {
+                        console.log('User approved, showing app');
+                        currentUser = user;
+                        const emailElement = document.getElementById('user-email');
+                        if (emailElement) {
+                            emailElement.textContent = user.email;
+                        }
+                        hideAuthError();
+                        showApp();
+                        initializeApp();
+                    } else {
+                        console.log('User not approved, signing out');
+                        auth.signOut();
+                        showAuthError('הכניסה נדחתה. המייל ' + user.email + ' לא מורשה.');
                         showAuthScreen();
-                    });
+                    }
                 } else {
-                    console.log('No user signed in');
+                    console.log('No user, showing auth screen');
                     currentUser = null;
                     showAuthScreen();
                 }
