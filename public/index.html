@@ -285,6 +285,9 @@
                         <button onclick="testBasicAuth()" class="text-xs text-blue-400 hover:text-blue-600" style="background: none; border: none; text-decoration: underline;">
                             Test Auth
                         </button>
+                        <button onclick="startLiveDebug()" class="text-xs text-green-400 hover:text-green-600" style="background: none; border: none; text-decoration: underline;">
+                            Live Debug
+                        </button>
                     </div>
                     <div id="debug-output" class="mt-2 p-2 bg-gray-50 rounded text-xs text-left" style="display: none; font-family: monospace;"></div>
                 </div>
@@ -658,7 +661,8 @@
 
         async function signInWithGoogle() {
             try {
-                console.log('Sign in attempt started');
+                console.log('=== SIGN IN ATTEMPT STARTED ===');
+                updateLiveDebug('Sign in attempt started');
                 hideAuthError();
                 
                 // Show loading state
@@ -668,16 +672,32 @@
                 }
                 
                 const provider = new firebase.auth.GoogleAuthProvider();
+                console.log('Google provider created');
                 
                 // Try popup first (works on most devices)
-                console.log('Attempting popup sign in');
+                console.log('Attempting popup sign in...');
                 const result = await auth.signInWithPopup(provider);
                 
-                console.log('Sign in successful:', result.user.email);
-                await handleSignInResult(result.user);
+                console.log('Popup completed successfully!');
+                console.log('Result:', result);
+                console.log('User:', result.user);
+                console.log('User email:', result.user ? result.user.email : 'NO USER');
+                
+                if (result && result.user) {
+                    console.log('Calling handleSignInResult with user:', result.user.email);
+                    updateLiveDebug('Popup successful, user: ' + result.user.email);
+                    await handleSignInResult(result.user);
+                } else {
+                    console.error('No user in result!');
+                    updateLiveDebug('ERROR: No user in popup result');
+                    showAuthError('לא התקבל משתמש מGoogle. אנא נסה שוב.');
+                }
                 
             } catch (error) {
-                console.error('Sign in error:', error);
+                console.error('=== SIGN IN ERROR ===');
+                console.error('Error code:', error.code);
+                console.error('Error message:', error.message);
+                console.error('Full error:', error);
                 
                 // Reset button text
                 const signInText = document.getElementById('signin-text');
@@ -711,22 +731,49 @@
 
         // Handle sign-in result (used for both popup and redirect)
         async function handleSignInResult(user) {
-            console.log('handleSignInResult called with user:', user);
-            if (user && isEmailApproved(user.email)) {
-                console.log('User signed in successfully:', user.email);
-                currentUser = user;
-                if (document.getElementById('user-email')) {
-                    document.getElementById('user-email').textContent = user.email;
-                }
-                showApp();
-                initializeApp();
-            } else {
-                console.log('User not approved or null:', user ? user.email : 'null');
-                if (user) {
+            console.log('=== HANDLE SIGN IN RESULT ===');
+            console.log('User object:', user);
+            console.log('User email:', user ? user.email : 'NO EMAIL');
+            console.log('Approved emails list:', approvedEmails);
+            
+            if (user && user.email) {
+                console.log('Checking if email is approved...');
+                const isApproved = isEmailApproved(user.email);
+                console.log('Email approved:', isApproved);
+                
+                if (isApproved) {
+                    console.log('✓ User approved! Setting up app...');
+                    updateLiveDebug('✓ User approved: ' + user.email);
+                    currentUser = user;
+                    
+                    const emailElement = document.getElementById('user-email');
+                    console.log('Email element found:', !!emailElement);
+                    if (emailElement) {
+                        emailElement.textContent = user.email;
+                    }
+                    
+                    console.log('Calling showApp()...');
+                    updateLiveDebug('Calling showApp()...');
+                    showApp();
+                    
+                    console.log('Calling initializeApp()...');
+                    updateLiveDebug('Calling initializeApp()...');
+                    initializeApp();
+                    
+                    console.log('✓ Authentication complete!');
+                    updateLiveDebug('✓ Authentication complete!');
+                } else {
+                    console.log('✗ User email not approved:', user.email);
+                    updateLiveDebug('✗ Email not approved: ' + user.email);
+                    console.log('Signing out...');
                     await auth.signOut();
+                    showAuthError('הכניסה נדחתה. המייל ' + user.email + ' לא ברשימת המורשים.');
                 }
-                showAuthError('הכניסה נדחתה. רק משתמשים מורשים יכולים לגשת לאפליקציה.');
+            } else {
+                console.log('✗ No user or no email');
+                showAuthError('שגיאה: לא התקבלו פרטי משתמש מGoogle.');
             }
+            console.log('=== END HANDLE SIGN IN RESULT ===');
         }
 
         // Debug function for testing
@@ -839,10 +886,38 @@
             }
         }
 
+        // Live debugging
+        let liveDebugActive = false;
+        function startLiveDebug() {
+            liveDebugActive = !liveDebugActive;
+            const debugOutput = document.getElementById('debug-output');
+            
+            if (liveDebugActive) {
+                debugOutput.style.display = 'block';
+                debugOutput.textContent = '=== LIVE DEBUG ACTIVE ===\nWaiting for events...\n';
+                console.log('Live debug started');
+            } else {
+                debugOutput.style.display = 'none';
+                console.log('Live debug stopped');
+            }
+        }
+
+        function updateLiveDebug(message) {
+            if (liveDebugActive) {
+                const debugOutput = document.getElementById('debug-output');
+                if (debugOutput) {
+                    const timestamp = new Date().toLocaleTimeString();
+                    debugOutput.textContent += `[${timestamp}] ${message}\n`;
+                    debugOutput.scrollTop = debugOutput.scrollHeight;
+                }
+            }
+        }
+
         // Make functions available globally
         window.debugAuth = showDebugInfo;
         window.showDebugInfo = showDebugInfo;
         window.testBasicAuth = testBasicAuth;
+        window.startLiveDebug = startLiveDebug;
 
         async function signOut() {
             try {
@@ -931,12 +1006,14 @@
 
             // Simple auth state monitoring
             auth.onAuthStateChanged((user) => {
-                console.log('Auth state changed:', user ? user.email : 'no user');
+                console.log('=== AUTH STATE CHANGED ===');
+                console.log('User:', user ? user.email : 'no user');
+                console.log('Current user variable:', currentUser ? currentUser.email : 'no current user');
                 
                 if (user) {
-                    console.log('User signed in, checking approval...');
+                    console.log('Auth state: User signed in, checking approval...');
                     if (isEmailApproved(user.email)) {
-                        console.log('User approved, showing app');
+                        console.log('Auth state: User approved, showing app');
                         currentUser = user;
                         const emailElement = document.getElementById('user-email');
                         if (emailElement) {
@@ -946,16 +1023,17 @@
                         showApp();
                         initializeApp();
                     } else {
-                        console.log('User not approved, signing out');
+                        console.log('Auth state: User not approved, signing out');
                         auth.signOut();
                         showAuthError('הכניסה נדחתה. המייל ' + user.email + ' לא מורשה.');
                         showAuthScreen();
                     }
                 } else {
-                    console.log('No user, showing auth screen');
+                    console.log('Auth state: No user, showing auth screen');
                     currentUser = null;
                     showAuthScreen();
                 }
+                console.log('=== END AUTH STATE CHANGED ===');
             });
         }
 
