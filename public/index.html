@@ -278,9 +278,10 @@
                 <div class="mt-4 text-center">
                     <p class="text-xs sm:text-sm text-gray-500">רק משתמשים מורשים יכולים להיכנס לאפליקציה</p>
                     <p class="text-xs text-gray-400 mt-1" id="ios-hint" style="display: none;">על iOS, ייתכן שתועבר לדף Google</p>
-                    <button onclick="window.debugAuth && window.debugAuth()" class="mt-2 text-xs text-gray-400 hover:text-gray-600" style="background: none; border: none; text-decoration: underline;">
+                    <button onclick="showDebugInfo()" class="mt-2 text-xs text-gray-400 hover:text-gray-600" style="background: none; border: none; text-decoration: underline;">
                         Debug Info (למפתח)
                     </button>
+                    <div id="debug-output" class="mt-2 p-2 bg-gray-50 rounded text-xs text-left" style="display: none; font-family: monospace;"></div>
                 </div>
             </div>
             
@@ -426,6 +427,16 @@
     </div>
 
     <script>
+        // Global error handler for debugging
+        window.onerror = function(msg, url, line, col, error) {
+            console.error('Global error:', msg, 'at', line + ':' + col);
+            const authError = document.getElementById('auth-error');
+            if (authError) {
+                authError.innerHTML = `JavaScript Error: ${msg}<br>Line: ${line}`;
+                authError.style.display = 'block';
+            }
+        };
+
         // Firebase Configuration
         const firebaseConfig = {
             apiKey: "AIzaSyDOQ29YJkEQqSk9j7FvNsZEwE-xuVh5kQU",
@@ -713,17 +724,60 @@
             }
         }
 
-        // Debug function for testing (available in console)
-        window.debugAuth = function() {
-            console.log('=== DEBUG AUTH STATE ===');
-            console.log('Current user:', auth.currentUser);
-            console.log('Approved emails:', approvedEmails);
-            if (auth.currentUser) {
-                console.log('User email:', auth.currentUser.email);
-                console.log('Is approved:', isEmailApproved(auth.currentUser.email));
+        // Debug function for testing
+        function showDebugInfo() {
+            try {
+                const debugOutput = document.getElementById('debug-output');
+                if (!debugOutput) {
+                    alert('Debug output element not found');
+                    return;
+                }
+
+                let debugText = '=== DEBUG INFO ===\n';
+                debugText += `Time: ${new Date().toLocaleString()}\n`;
+                debugText += `User Agent: ${navigator.userAgent.substring(0, 100)}...\n`;
+                debugText += `URL: ${window.location.href}\n`;
+                
+                // Check Firebase
+                if (typeof firebase === 'undefined') {
+                    debugText += 'ERROR: Firebase not loaded\n';
+                } else {
+                    debugText += 'Firebase: Loaded ✓\n';
+                }
+
+                // Check Auth
+                if (typeof auth === 'undefined' || !auth) {
+                    debugText += 'ERROR: Auth not initialized\n';
+                } else {
+                    debugText += 'Auth: Initialized ✓\n';
+                    debugText += `Current user: ${auth.currentUser ? auth.currentUser.email : 'null'}\n`;
+                }
+
+                // Check approved emails
+                debugText += `Approved emails: ${approvedEmails.join(', ')}\n`;
+                
+                // Check current state
+                if (auth && auth.currentUser) {
+                    debugText += `User email: ${auth.currentUser.email}\n`;
+                    debugText += `Is approved: ${isEmailApproved(auth.currentUser.email)}\n`;
+                }
+
+                // Show in UI
+                debugOutput.textContent = debugText;
+                debugOutput.style.display = 'block';
+
+                // Also log to console
+                console.log(debugText);
+                
+            } catch (error) {
+                alert('Debug error: ' + error.message);
+                console.error('Debug error:', error);
             }
-            console.log('========================');
-        };
+        }
+
+        // Also make available globally
+        window.debugAuth = showDebugInfo;
+        window.showDebugInfo = showDebugInfo;
 
         async function signOut() {
             try {
@@ -2347,28 +2401,51 @@
         
         // Initialize App
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('Initializing application...');
-            
-            if (!auth || !database) {
-                console.error('Firebase not initialized properly. Halting execution.');
-                return;
-            }
-
-            // Check for iOS and show appropriate messaging
-            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-            const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
-            if (isIOS && isSafari) {
-                const iosHint = document.getElementById('ios-hint');
-                if (iosHint) {
-                    iosHint.style.display = 'block';
+            try {
+                console.log('=== APP INITIALIZATION START ===');
+                console.log('DOM loaded, initializing application...');
+                
+                // Basic checks
+                console.log('Firebase available:', typeof firebase !== 'undefined');
+                console.log('Auth available:', typeof auth !== 'undefined' && !!auth);
+                console.log('Database available:', typeof database !== 'undefined' && !!database);
+                
+                if (!auth || !database) {
+                    console.error('Firebase not initialized properly. Halting execution.');
+                    showAuthError('שגיאה בהפעלת המערכת. אנא רענן את הדף.');
+                    return;
                 }
+
+                // Check for iOS and show appropriate messaging
+                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+                const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+                console.log('Detected iOS Safari:', isIOS && isSafari);
+                
+                if (isIOS && isSafari) {
+                    const iosHint = document.getElementById('ios-hint');
+                    if (iosHint) {
+                        iosHint.style.display = 'block';
+                    }
+                }
+
+                // Set up Google Sign-in button
+                const signInBtn = document.getElementById('google-signin-btn');
+                if (signInBtn) {
+                    signInBtn.addEventListener('click', signInWithGoogle);
+                    console.log('Sign-in button event listener attached');
+                } else {
+                    console.error('Sign-in button not found');
+                }
+
+                // Set up authentication state listener
+                setupAuthStateListener();
+                
+                console.log('=== APP INITIALIZATION COMPLETE ===');
+                
+            } catch (error) {
+                console.error('Critical error during initialization:', error);
+                showAuthError('שגיאה קריטית בהפעלת האפליקציה: ' + error.message);
             }
-
-            // Set up Google Sign-in button
-            document.getElementById('google-signin-btn').addEventListener('click', signInWithGoogle);
-
-            // Set up authentication state listener
-            setupAuthStateListener();
         });
     </script>
 </body>
