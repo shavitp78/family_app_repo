@@ -350,9 +350,12 @@
                     </div>
                 </div>
                 
-                <div class="flex gap-3 pt-4">
+                <div class="flex gap-2 pt-4">
                     <button onclick="saveEditedEvent()" class="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
                         שמור שינויים
+                    </button>
+                    <button onclick="deleteFromEdit()" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">
+                        מחק
                     </button>
                     <button onclick="closeEditModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400">
                         ביטול
@@ -366,22 +369,37 @@
     <div id="delete-event-modal" class="modal">
         <div class="modal-content max-w-md">
             <div class="text-center">
-                <h3 class="text-lg font-bold text-gray-800 mb-4">מחיקת אירוע</h3>
-                <p class="text-gray-600 mb-6">האם אתה בטוח שברצונך למחוק את האירוע?</p>
+                <div class="mb-4">
+                    <div class="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-3">
+                        <i data-lucide="trash-2" class="w-6 h-6 text-red-600"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-gray-800">מחיקת אירוע</h3>
+                </div>
+                
+                <div id="event-delete-details" class="bg-gray-50 p-3 rounded-lg mb-4 text-sm text-gray-700"></div>
+                
                 <div id="recurring-delete-options" class="space-y-3 mb-6" style="display: none;">
-                    <p class="text-sm text-gray-600">זהו אירוע חוזר. מה ברצונך למחוק?</p>
-                    <div class="space-y-2">
-                        <button onclick="deleteEvent('single')" class="w-full px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600">
-                            מחק רק אירוע זה
+                    <p class="text-sm text-gray-600 mb-4">זהו אירוע חוזר. אנא בחר מה למחוק:</p>
+                    <div class="space-y-3">
+                        <button onclick="deleteEvent('single')" class="w-full px-4 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 flex items-center justify-center">
+                            <i data-lucide="calendar-x" class="w-4 h-4 mr-2"></i>
+                            מחק רק את האירוע הזה
                         </button>
-                        <button onclick="deleteEvent('all')" class="w-full px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">
-                            מחק את כל האירועים החוזרים
+                        <button onclick="deleteEvent('all')" class="w-full px-4 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 flex items-center justify-center">
+                            <i data-lucide="calendar-off" class="w-4 h-4 mr-2"></i>
+                            מחק את כל הסדרה
+                        </button>
+                        <button onclick="closeDeleteModal()" class="w-full px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400">
+                            ביטול
                         </button>
                     </div>
                 </div>
+                
                 <div id="single-delete-options" class="space-y-3">
+                    <p class="text-gray-600 mb-4">האם אתה בטוח שברצונך למחוק את האירוע?</p>
                     <div class="flex gap-3 justify-center">
-                        <button onclick="deleteEvent('single')" class="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">
+                        <button onclick="deleteEvent('single')" class="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 flex items-center">
+                            <i data-lucide="trash-2" class="w-4 h-4 mr-1"></i>
                             מחק
                         </button>
                         <button onclick="closeDeleteModal()" class="px-6 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400">
@@ -640,9 +658,37 @@
         }
 
         function showApp() {
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('auth-screen').style.display = 'none';
-            document.getElementById('app').style.display = 'block';
+            console.log('showApp() called');
+            updateLiveDebug('showApp() - hiding auth, showing app');
+            
+            const loading = document.getElementById('loading');
+            const authScreen = document.getElementById('auth-screen');
+            const app = document.getElementById('app');
+            
+            console.log('Elements found:', {
+                loading: !!loading,
+                authScreen: !!authScreen,
+                app: !!app
+            });
+            
+            if (loading) {
+                loading.style.display = 'none';
+                console.log('Loading hidden');
+            }
+            
+            if (authScreen) {
+                authScreen.style.display = 'none';
+                console.log('Auth screen hidden');
+            }
+            
+            if (app) {
+                app.style.display = 'block';
+                console.log('App shown');
+                updateLiveDebug('✓ App UI should now be visible');
+            } else {
+                console.error('App element not found!');
+                updateLiveDebug('✗ ERROR: App element not found!');
+            }
         }
 
         function showAuthError(message) {
@@ -1705,6 +1751,21 @@
             deletingEventId = eventId;
             const isRecurring = event.recurring && event.recurring !== 'none';
             
+            // Show event details
+            const detailsDiv = document.getElementById('event-delete-details');
+            if (detailsDiv && event) {
+                const membersList = Array.isArray(event.members) ? event.members.join(', ') : event.member || '';
+                const eventDate = formatDate(event.date);
+                const eventTime = event.time ? ` בשעה ${formatTime(event.time)}` : '';
+                
+                detailsDiv.innerHTML = `
+                    <div class="font-medium">${event.activity}</div>
+                    <div class="text-xs mt-1">${eventDate}${eventTime}</div>
+                    <div class="text-xs">משתתפים: ${membersList}</div>
+                    ${isRecurring || event.isRecurring ? '<div class="text-xs text-orange-600 font-medium">⟲ אירוע חוזר</div>' : ''}
+                `;
+            }
+            
             if (isRecurring || event.isRecurring) {
                 document.getElementById('recurring-delete-options').style.display = 'block';
                 document.getElementById('single-delete-options').style.display = 'none';
@@ -1714,6 +1775,9 @@
             }
             
             document.getElementById('delete-event-modal').classList.add('show');
+            
+            // Initialize icons
+            setTimeout(() => lucide.createIcons(), 100);
         }
 
         function closeDeleteModal() {
@@ -1727,6 +1791,20 @@
             await removeCalendarEvent(deletingEventId, type);
             closeDeleteModal();
             renderCurrentView();
+        }
+
+        // Delete from edit modal
+        function deleteFromEdit() {
+            if (!editingEventId) return;
+            
+            const event = calendar.find(e => e.id === editingEventId);
+            if (!event) return;
+            
+            // Close edit modal first
+            closeEditModal();
+            
+            // Open delete modal with the event
+            openDeleteModal(editingEventId, event);
         }
 
         // Weekly tasks functions
