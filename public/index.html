@@ -1786,11 +1786,22 @@
         }
 
         async function deleteEvent(type) {
-            if (!deletingEventId) return;
+            console.log('deleteEvent called with type:', type);
+            console.log('deletingEventId:', deletingEventId);
             
-            await removeCalendarEvent(deletingEventId, type);
-            closeDeleteModal();
-            renderCurrentView();
+            if (!deletingEventId) {
+                console.error('No deletingEventId set');
+                return;
+            }
+            
+            try {
+                await removeCalendarEvent(deletingEventId, type);
+                closeDeleteModal();
+                renderCurrentView();
+                console.log('Event deleted successfully');
+            } catch (error) {
+                console.error('Error deleting event:', error);
+            }
         }
 
         // Delete from edit modal
