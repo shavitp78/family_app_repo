@@ -1786,41 +1786,19 @@
         }
 
         async function deleteEvent(type) {
-            console.log('deleteEvent called with type:', type);
-            console.log('deletingEventId:', deletingEventId);
+            if (!deletingEventId) return;
             
-            if (!deletingEventId) {
-                console.error('No deletingEventId set');
-                return;
-            }
-            
-            try {
-                await removeCalendarEvent(deletingEventId, type);
-                closeDeleteModal();
-                renderCurrentView();
-                console.log('Event deleted successfully');
-            } catch (error) {
-                console.error('Error deleting event:', error);
-            }
+            await removeCalendarEvent(deletingEventId, type);
+            closeDeleteModal();
+            renderCurrentView();
         }
 
         // Delete from edit modal
         function deleteFromEdit() {
-            console.log('deleteFromEdit called');
-            console.log('editingEventId:', editingEventId);
-            
-            if (!editingEventId) {
-                console.error('No editingEventId set');
-                return;
-            }
+            if (!editingEventId) return;
             
             const event = calendar.find(e => e.id === editingEventId);
-            console.log('Found event:', event);
-            
-            if (!event) {
-                console.error('Event not found in calendar');
-                return;
-            }
+            if (!event) return;
             
             // Close edit modal first
             closeEditModal();
