@@ -1994,8 +1994,8 @@
                                         ${totalItems > 0 ? `<p class="text-xs text-green-600 font-bold">${totalItems} פריטים</p>` : ''}
                                     </div>
                                     
-                                    <div class="space-y-2">
-                                        ${Object.entries(openTasks).slice(0, 2).map(([task, taskInfo]) => `
+                                    <div class="space-y-2 overflow-y-auto max-h-64">
+                                        ${Object.entries(openTasks).map(([task, taskInfo]) => `
                                             <div class="p-2 rounded text-xs weekly-task-item">
                                                 <div class="flex items-center justify-between">
                                                     <button onclick="event.stopPropagation(); toggleWeeklyTask('${weekKey}', '${day}', '${task.replace(/'/g, "\\'")}')">
@@ -2009,14 +2009,14 @@
                                             </div>
                                         `).join('')}
                                         
-                                        ${dayEvents.slice(0, hasItems ? 1 : 2).map(event => `
+                                        ${dayEvents.map(event => `
                                             <div class="p-2 rounded text-xs calendar-event-item">
                                                 <div class="font-medium text-indigo-800 truncate">${event.activity}</div>
                                                 ${event.time ? `<div class="text-xs text-indigo-600">⏰ ${formatTime(event.time)}</div>` : ''}
                                             </div>
                                         `).join('')}
                                         
-                                        ${dayCustomTasks.slice(0, hasItems ? 1 : 2).map(task => `
+                                        ${dayCustomTasks.map(task => `
                                             <div class="p-2 rounded text-xs custom-task-item">
                                                 <div class="flex items-center justify-between">
                                                     <button onclick="event.stopPropagation(); toggleCustomTask(${task.id})">
@@ -2030,7 +2030,6 @@
                                             </div>
                                         `).join('')}
                                         
-                                        ${totalItems > 3 ? `<div class="text-xs text-gray-500 text-center">+${totalItems - 3} עוד...</div>` : ''}
                                     </div>
                                 </div>
                             `;
@@ -2211,11 +2210,11 @@
                     const dayName = getDayOfWeekFromDate(dateStr);
                     
                     week.push(`
-                        <div class="h-20 sm:h-32 border border-gray-200 p-1 ${isToday ? 'bg-blue-50 border-blue-300' : 'bg-white'} ${totalItems > 0 ? 'cursor-pointer hover:shadow-md' : ''} calendar-day" 
+                        <div class="h-32 sm:h-40 border border-gray-200 p-1 ${isToday ? 'bg-blue-50 border-blue-300' : 'bg-white'} ${totalItems > 0 ? 'cursor-pointer hover:shadow-md' : ''} calendar-day" 
                              ${totalItems > 0 ? `onclick="openDayEventsModal('${dateStr}', '${dayName}')"` : ''}>
                             <div class="text-xs sm:text-sm font-medium ${isToday ? 'text-blue-700' : 'text-gray-700'} mb-1">${day}</div>
                             ${totalItems > 0 ? `<div class="text-xs text-green-600 font-bold mb-1">${totalItems} פריטים</div>` : ''}
-                            <div class="space-y-1 overflow-hidden">
+                            <div class="space-y-1 overflow-y-auto max-h-24 sm:max-h-28">
                                 ${dayEvents.map(event => {
                                     const firstMember = Array.isArray(event.members) && event.members.length > 0 ? event.members[0] : event.member || '';
                                     const memberColor = memberColors[firstMember] || 'bg-gray-100 border-gray-300 text-gray-800';
